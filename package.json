@@ -1,0 +1,61 @@
+{
+  "name": "tmf-ecore-editor",
+  "displayName": "TMF Ecore Editor",
+  "description": "Visual editor for Eclipse Ecore models",
+  "version": "0.1.0",
+  "engines": {
+    "vscode": "^1.74.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "onCustomEditor:tmf-ecore-editor.ecoreEditor"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "customEditors": [
+      {
+        "viewType": "tmf-ecore-editor.ecoreEditor",
+        "displayName": "TMF Ecore Editor",
+        "selector": [
+          {
+            "filenamePattern": "*.ecore"
+          }
+        ],
+        "priority": "default"
+      }
+    ],
+    "commands": [
+      {
+        "command": "tmf-ecore-editor.openEditor",
+        "title": "Open Ecore Editor",
+        "category": "TMF"
+      }
+    ]
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "webpack",
+    "watch": "webpack --watch",
+    "pretest": "npm run compile",
+    "test": "node ./out/test/runTest.js",
+    "lint": "eslint src --ext ts"
+  },
+  "devDependencies": {
+    "@types/node": "^18.0.0",
+    "@types/vscode": "^1.74.0",
+    "@typescript-eslint/eslint-plugin": "^5.42.0",
+    "@typescript-eslint/parser": "^5.42.0",
+    "eslint": "^8.26.0",
+    "ts-loader": "^9.4.2",
+    "typescript": "^4.9.3",
+    "webpack": "^5.75.0",
+    "webpack-cli": "^5.0.0"
+  },
+  "dependencies": {
+    "@tripsnek/tmf": "^1.1.2",
+    "@vscode/codicons": "^0.0.33",
+    "xml2js": "^0.5.0"
+  }
+}
