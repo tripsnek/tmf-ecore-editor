@@ -771,58 +771,73 @@ export class ModelTreeView {
         this.showStatus(`Created new package: ${name} (rename in properties panel)`);
     }
 
-    private addAttribute(classNode: TreeNode): void {
-        const eClass = classNode.element as EClass;
-        const name = `attribute${++this.attributeCounter}`;
+// Update the addAttribute method to set proper defaults
+private addAttribute(classNode: TreeNode): void {
+    const eClass = classNode.element as EClass;
+    const name = `attribute${++this.attributeCounter}`;
 
-        // Create new attribute
-        const attr = new EAttributeImpl();
-        attr.setName(name);
-        eClass.getEStructuralFeatures().add(attr);
-        attr.setEContainingClass(eClass);
+    // Create new attribute
+    const attr = new EAttributeImpl();
+    attr.setName(name);
+    
+    // Set common defaults that are often expected
+    if (attr.setLowerBound) attr.setLowerBound(1); // Most attributes are required
+    if (attr.setUpperBound) attr.setUpperBound(1); // Single-valued by default
+    
+    eClass.getEStructuralFeatures().add(attr);
+    attr.setEContainingClass(eClass);
 
-        // Add to tree
-        const attrNode = this.createAttributeNode(attr);
-        attrNode.parent = classNode;
-        // Insert before references and operations
-        const firstRefIndex = classNode.children.findIndex(n => n.type === 'EReference');
-        const firstOpIndex = classNode.children.findIndex(n => n.type === 'EOperation');
-        const insertIndex = firstRefIndex >= 0 ? firstRefIndex : (firstOpIndex >= 0 ? firstOpIndex : classNode.children.length);
-        classNode.children.splice(insertIndex, 0, attrNode);
-        
-        // Expand parent and refresh
-        classNode.expanded = true;
-        this.refresh();
-        this.selectNode(attrNode);
-        
-        this.showStatus(`Created new attribute: ${name} (configure in properties panel)`);
+    // Add to tree
+    const attrNode = this.createAttributeNode(attr);
+    attrNode.parent = classNode;
+    // Insert before references and operations
+    const firstRefIndex = classNode.children.findIndex(n => n.type === 'EReference');
+    const firstOpIndex = classNode.children.findIndex(n => n.type === 'EOperation');
+    const insertIndex = firstRefIndex >= 0 ? firstRefIndex : (firstOpIndex >= 0 ? firstOpIndex : classNode.children.length);
+    classNode.children.splice(insertIndex, 0, attrNode);
+    
+    // Expand parent and refresh
+    classNode.expanded = true;
+    this.refresh();
+    this.selectNode(attrNode);
+    
+    this.showStatus(`Created new attribute: ${name} (configure in properties panel)`);
+}
+
+
+// Update the addReference method to set containment references properly
+private addReference(classNode: TreeNode): void {
+    const eClass = classNode.element as EClass;
+    const name = `reference${++this.referenceCounter}`;
+
+    // Create new reference
+    const ref = new EReferenceImpl();
+    ref.setName(name);
+    
+    // For containment references, set resolveProxies to false by default
+    // This matches the pattern in the original file
+    if (ref.setResolveProxies) {
+        ref.setResolveProxies(false);
     }
+    
+    eClass.getEStructuralFeatures().add(ref);
+    ref.setEContainingClass(eClass);
 
-    private addReference(classNode: TreeNode): void {
-        const eClass = classNode.element as EClass;
-        const name = `reference${++this.referenceCounter}`;
-
-        // Create new reference
-        const ref = new EReferenceImpl();
-        ref.setName(name);
-        eClass.getEStructuralFeatures().add(ref);
-        ref.setEContainingClass(eClass);
-
-        // Add to tree
-        const refNode = this.createReferenceNode(ref);
-        refNode.parent = classNode;
-        // Insert before operations
-        const firstOpIndex = classNode.children.findIndex(n => n.type === 'EOperation');
-        const insertIndex = firstOpIndex >= 0 ? firstOpIndex : classNode.children.length;
-        classNode.children.splice(insertIndex, 0, refNode);
-        
-        // Expand parent and refresh
-        classNode.expanded = true;
-        this.refresh();
-        this.selectNode(refNode);
-        
-        this.showStatus(`Created new reference: ${name} (configure in properties panel)`);
-    }
+    // Add to tree
+    const refNode = this.createReferenceNode(ref);
+    refNode.parent = classNode;
+    // Insert before operations
+    const firstOpIndex = classNode.children.findIndex(n => n.type === 'EOperation');
+    const insertIndex = firstOpIndex >= 0 ? firstOpIndex : classNode.children.length;
+    classNode.children.splice(insertIndex, 0, refNode);
+    
+    // Expand parent and refresh
+    classNode.expanded = true;
+    this.refresh();
+    this.selectNode(refNode);
+    
+    this.showStatus(`Created new reference: ${name} (configure in properties panel)`);
+}
 
     private addOperation(classNode: TreeNode): void {
         const eClass = classNode.element as EClass;

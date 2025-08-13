@@ -134,6 +134,35 @@ export class ModelController {
                     element.setValue(value);
                 }
                 break;
+        case 'unsettable':
+            if (element.setUnsettable) {
+                element.setUnsettable(value);
+            }
+            break;
+            
+        case 'resolveProxies':
+            if (element.setResolveProxies) {
+                element.setResolveProxies(value);
+            }
+            break;
+            
+        case 'changeable':
+            if (element.setChangeable) {
+                element.setChangeable(value);
+            }
+            break;
+            
+        case 'volatile':
+            if (element.setVolatile) {
+                element.setVolatile(value);
+            }
+            break;
+            
+        case 'defaultValue':
+            if (element.setDefaultValue) {
+                element.setDefaultValue(value);
+            }
+            break;                
         }
     }
 

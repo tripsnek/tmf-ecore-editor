@@ -364,99 +364,147 @@ export class PropertiesPanel {
                 }
             );
         } else if (this.isEAttribute(element)) {
-            // Get current type for EAttribute
-            const currentType = element.getEType ? element.getEType() : null;
-            
-            properties.push(
-                {
-                    name: 'eType',
-                    label: 'Type',
-                    type: 'reference',
-                    value: currentType,
-                    options: this.getAvailableDataTypes(currentType)
-                },
-                {
-                    name: 'lowerBound',
-                    label: 'Lower Bound',
-                    type: 'number',
-                    value: element.getLowerBound ? element.getLowerBound() : 0
-                },
-                {
-                    name: 'upperBound',
-                    label: 'Upper Bound',
-                    type: 'number',
-                    value: element.getUpperBound ? element.getUpperBound() : 1
-                },
-                {
-                    name: 'id',
-                    label: 'Is ID',
-                    type: 'boolean',
-                    value: element.isId ? element.isId() : false
-                },
-                {
-                    name: 'derived',
-                    label: 'Derived',
-                    type: 'boolean',
-                    value: element.isDerived ? element.isDerived() : false
-                },
-                {
-                    name: 'transient',
-                    label: 'Transient',
-                    type: 'boolean',
-                    value: element.isTransient ? element.isTransient() : false
-                }
-            );
-        } else if (this.isEReference(element)) {
-            // Get current type for EReference
-            const currentType = element.getEType ? element.getEType() : null;
-            
-            properties.push(
-                {
-                    name: 'eType',
-                    label: 'Type',
-                    type: 'reference',
-                    value: currentType,
-                    options: this.getAvailableClasses(null, currentType)
-                },
-                {
-                    name: 'lowerBound',
-                    label: 'Lower Bound',
-                    type: 'number',
-                    value: element.getLowerBound ? element.getLowerBound() : 0
-                },
-                {
-                    name: 'upperBound',
-                    label: 'Upper Bound',
-                    type: 'number',
-                    value: element.getUpperBound ? element.getUpperBound() : 1
-                },
-                {
-                    name: 'containment',
-                    label: 'Containment',
-                    type: 'boolean',
-                    value: element.isContainment ? element.isContainment() : false
-                },
-                {
-                    name: 'eOpposite',
-                    label: 'Opposite',
-                    type: 'reference',
-                    value: element.getEOpposite ? element.getEOpposite() : null,
-                    options: this.getAvailableReferences(element)
-                },
-                {
-                    name: 'derived',
-                    label: 'Derived',
-                    type: 'boolean',
-                    value: element.isDerived ? element.isDerived() : false
-                },
-                {
-                    name: 'transient',
-                    label: 'Transient',
-                    type: 'boolean',
-                    value: element.isTransient ? element.isTransient() : false
-                }
-            );
-        } else if (this.isEOperation(element)) {
+    // Get current type for EAttribute
+    const currentType = element.getEType ? element.getEType() : null;
+    
+    properties.push(
+        {
+            name: 'eType',
+            label: 'Type',
+            type: 'reference',
+            value: currentType,
+            options: this.getAvailableDataTypes(currentType)
+        },
+        {
+            name: 'lowerBound',
+            label: 'Lower Bound',
+            type: 'number',
+            value: element.getLowerBound ? element.getLowerBound() : 0
+        },
+        {
+            name: 'upperBound',
+            label: 'Upper Bound',
+            type: 'number',
+            value: element.getUpperBound ? element.getUpperBound() : 1
+        },
+        // {
+        //     name: 'defaultValue',
+        //     label: 'Default Value',
+        //     type: 'string',
+        //     value: element.getDefaultValue ? element.getDefaultValue() : ''
+        // },
+        {
+            name: 'id',
+            label: 'Is ID',
+            type: 'boolean',
+            value: element.isId ? element.isId() : false
+        },
+        // {
+        //     name: 'changeable',
+        //     label: 'Changeable',
+        //     type: 'boolean',
+        //     value: element.isChangeable ? element.isChangeable() : true
+        // },
+        {
+            name: 'volatile',
+            label: 'Volatile',
+            type: 'boolean',
+            value: element.isVolatile ? element.isVolatile() : false
+        },
+        {
+            name: 'transient',
+            label: 'Transient',
+            type: 'boolean',
+            value: element.isTransient ? element.isTransient() : false
+        },
+        // {
+        //     name: 'unsettable',
+        //     label: 'Unsettable',
+        //     type: 'boolean',
+        //     value: element.isUnsettable ? element.isUnsettable() : false
+        // },
+        // {
+        //     name: 'derived',
+        //     label: 'Derived',
+        //     type: 'boolean',
+        //     value: element.isDerived ? element.isDerived() : false
+        // }
+    );
+} else if (this.isEReference(element)) {
+    // Get current type for EReference
+    const currentType = element.getEType ? element.getEType() : null;
+    
+    properties.push(
+        {
+            name: 'eType',
+            label: 'Type',
+            type: 'reference',
+            value: currentType,
+            options: this.getAvailableClasses(null, currentType)
+        },
+        {
+            name: 'lowerBound',
+            label: 'Lower Bound',
+            type: 'number',
+            value: element.getLowerBound ? element.getLowerBound() : 0
+        },
+        {
+            name: 'upperBound',
+            label: 'Upper Bound',
+            type: 'number',
+            value: element.getUpperBound ? element.getUpperBound() : 1
+        },
+        {
+            name: 'containment',
+            label: 'Containment',
+            type: 'boolean',
+            value: element.isContainment ? element.isContainment() : false
+        },
+        // {
+        //     name: 'resolveProxies',
+        //     label: 'Resolve Proxies',
+        //     type: 'boolean',
+        //     value: element.isResolveProxies ? element.isResolveProxies() : true
+        // },
+        {
+            name: 'eOpposite',
+            label: 'Opposite',
+            type: 'reference',
+            value: element.getEOpposite ? element.getEOpposite() : null,
+            options: this.getAvailableReferences(element)
+        },
+        // {
+        //     name: 'changeable',
+        //     label: 'Changeable',
+        //     type: 'boolean',
+        //     value: element.isChangeable ? element.isChangeable() : true
+        // },
+        {
+            name: 'volatile',
+            label: 'Volatile',
+            type: 'boolean',
+            value: element.isVolatile ? element.isVolatile() : false
+        },
+        {
+            name: 'transient',
+            label: 'Transient',
+            type: 'boolean',
+            value: element.isTransient ? element.isTransient() : false
+        },
+        // {
+        //     name: 'unsettable',
+        //     label: 'Unsettable',
+        //     type: 'boolean',
+        //     value: element.isUnsettable ? element.isUnsettable() : false
+        // },
+        // {
+        //     name: 'derived',
+        //     label: 'Derived',
+        //     type: 'boolean',
+        //     value: element.isDerived ? element.isDerived() : false
+        // }
+    );
+} else if (this.isEOperation(element)) {
             properties.push(
                 {
                     name: 'eType',
