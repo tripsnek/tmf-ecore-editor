@@ -109,17 +109,6 @@ export class ModelController {
                 }
                 break;
             
-            case 'eSuperType':
-                if (element.getESuperTypes) {
-                    const superTypes = element.getESuperTypes();
-                    superTypes.clear();
-                    // Add the new super type if provided
-                    if (value) {
-                        superTypes.add(value);
-                    }
-                }
-                break;
-            
             case 'eSuperTypes':
                 // Legacy support for the old multi-valued property
                 if (element.getESuperTypes) {

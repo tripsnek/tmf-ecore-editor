@@ -21,6 +21,9 @@ export class EcoreEditorProvider implements vscode.CustomTextEditorProvider {
             ]
         };
 
+        // Track if we're updating from webview to prevent loops
+        let updatingFromWebview = false;
+
         // Parse the ecore document
         let rootPackage: EPackage | null = null;
         let xmlAsJson = '';
@@ -31,7 +34,7 @@ export class EcoreEditorProvider implements vscode.CustomTextEditorProvider {
         } catch (error) {
             vscode.window.showErrorMessage(`Failed to parse Ecore file: ${error}`);
         }
-        console.log('JSON ecore size: ' + xmlAsJson.length + ' and root package is ' + rootPackage.getName());
+        console.log('JSON ecore size: ' + xmlAsJson.length + ' and root package is ' + rootPackage?.getName());
 
         // Set up the webview content
         webviewPanel.webview.html = this.getHtmlForWebview(webviewPanel.webview, document);
@@ -54,10 +57,13 @@ export class EcoreEditorProvider implements vscode.CustomTextEditorProvider {
                         }
                         break;
                     
-                    case 'updateModel':
+                    case 'updateDocument':
                         // Update the document with new model content (XML)
-                        console.log('Updating model with XML content');
+                        // This is the immediate update when properties change
+                        console.log('Updating document with XML content');
+                        updatingFromWebview = true;
                         await this.updateTextDocument(document, message.content);
+                        updatingFromWebview = false;
                         break;
                     
                     case 'showMessage':
@@ -94,8 +100,8 @@ export class EcoreEditorProvider implements vscode.CustomTextEditorProvider {
         const changeDocumentSubscription = vscode.workspace.onDidChangeTextDocument(e => {
             if (e.document.uri.toString() === document.uri.toString()) {
                 // Only update if change came from outside our editor
-                // Check if the content change is from our own save operation
-                if (e.contentChanges.length > 0) {
+                // and we're not currently updating from the webview
+                if (!updatingFromWebview && e.contentChanges.length > 0) {
                     // Parse the XML and convert to JSON before sending
                     try {
                         const parser = new EcoreParser();
@@ -141,13 +147,6 @@ export class EcoreEditorProvider implements vscode.CustomTextEditorProvider {
         const codiconsUri = webview.asWebviewUri(
             vscode.Uri.joinPath(this.context.extensionUri, 'media', 'codicon.css')
         );
-
-        /**Keep this incase we want to go back to codicons as dependency */
-        // const codiconsUri = webview.asWebviewUri(
-        //     vscode.Uri.joinPath(this.context.extensionUri, 'node_modules', '@vscode/codicons', 'dist', 'codicon.css')
-        // );
-        // const codiconsUri = webview.asWebviewUri(vscode.Uri.joinPath(this.context.extensionUri, 'node_modules', '@vscode/codicons', 'dist', 'codicon.css'));
-
 
         // Use a nonce to only allow specific scripts to be run
         const nonce = getNonce();

@@ -356,7 +356,7 @@ export class PropertiesPanel {
                     value: element.isInterface ? element.isInterface() : false
                 },
                 {
-                    name: 'eSuperType',
+                    name: 'eSuperTypes',
                     label: 'Super Type',
                     type: 'reference',
                     value: this.getSuperType(element),

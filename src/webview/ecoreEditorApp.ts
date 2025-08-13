@@ -15,8 +15,8 @@ export class EcoreEditorApp {
     private treeView: ModelTreeView;
     private propertiesPanel: PropertiesPanel;
     private modelController: ModelController;
-    private isDirty: boolean = false;
     private fileName: string = 'untitled.ecore';
+    private isUpdatingFromExternal: boolean = false;
 
     constructor() {
         this.parser = new EcoreStringParser();
@@ -50,12 +50,8 @@ export class EcoreEditorApp {
                     <div class="title">
                         <i class="codicon codicon-file"></i>
                         <span id="file-name">${this.fileName}</span>
-                        <span id="dirty-indicator" class="dirty-indicator" style="display: none;">●</span>
                     </div>
                     <div class="toolbar">
-                        <button id="save-btn" class="toolbar-btn" title="Save">
-                            <i class="codicon codicon-save"></i>
-                        </button>
                         <button id="undo-btn" class="toolbar-btn" title="Undo">
                             <i class="codicon codicon-discard"></i>
                         </button>
@@ -111,8 +107,7 @@ export class EcoreEditorApp {
     }
 
     private setupEventListeners(): void {
-        // Toolbar buttons
-        document.getElementById('save-btn')?.addEventListener('click', () => this.save());
+        // Toolbar buttons - removed save button
         document.getElementById('undo-btn')?.addEventListener('click', () => this.undo());
         document.getElementById('redo-btn')?.addEventListener('click', () => this.redo());
         document.getElementById('expand-all-btn')?.addEventListener('click', () => this.treeView.expandAll());
@@ -192,16 +187,20 @@ export class EcoreEditorApp {
             this.propertiesPanel.clear();
             
             this.setStatus('Model loaded successfully');
-            this.isDirty = false;
-            this.updateDirtyIndicator();
         } catch (error) {
             this.showError(`Failed to load model: ${error}`);
         }
     }
 
-    private handleExternalUpdate(xmlContent: string): void {
+    private handleExternalUpdate(jsonContent: string): void {
+        // Set flag to prevent update loops
+        this.isUpdatingFromExternal = true;
+        
         // Reload the model if it was changed externally
-        this.loadModel(xmlContent, this.fileName);
+        this.loadModel(jsonContent, this.fileName);
+        
+        // Reset flag
+        this.isUpdatingFromExternal = false;
     }
 
     private onTreeSelectionChanged(element: any): void {
@@ -217,6 +216,9 @@ export class EcoreEditorApp {
     }
 
     private onPropertyChanged(element: any, property: string, value: any): void {
+        // Don't update if we're processing an external update
+        if (this.isUpdatingFromExternal) return;
+        
         try {
             // Handle special cases for type properties
             if (property === 'eType' && value) {
@@ -242,8 +244,8 @@ export class EcoreEditorApp {
                 this.modelController.updateProperty(element, property, value);
             }
             
-            // Mark as dirty
-            this.setDirty(true);
+            // Immediately update the document in VSCode
+            this.updateDocument();
             
             // Refresh the tree if name changed
             if (property === 'name' || property === 'eType') {
@@ -261,20 +263,17 @@ export class EcoreEditorApp {
         }
     }
 
-    private save(): void {
-        if (!this.rootPackage) return;
+    private updateDocument(): void {
+        if (!this.rootPackage || this.isUpdatingFromExternal) return;
         
         try {
             const xmlContent = this.writer.writeToString(this.rootPackage);
             vscode.postMessage({
-                command: 'updateModel',
+                command: 'updateDocument',
                 content: xmlContent
             });
-            
-            this.setDirty(false);
-            this.setStatus('Model saved');
         } catch (error) {
-            this.showError(`Failed to save model: ${error}`);
+            this.showError(`Failed to update document: ${error}`);
         }
     }
 
@@ -286,18 +285,6 @@ export class EcoreEditorApp {
     private redo(): void {
         // TODO: Implement redo functionality
         this.setStatus('Redo not yet implemented');
-    }
-
-    private setDirty(dirty: boolean): void {
-        this.isDirty = dirty;
-        this.updateDirtyIndicator();
-    }
-
-    private updateDirtyIndicator(): void {
-        const indicator = document.getElementById('dirty-indicator');
-        if (indicator) {
-            indicator.style.display = this.isDirty ? 'inline' : 'none';
-        }
     }
 
     private setStatus(message: string): void {
