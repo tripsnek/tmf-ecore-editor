@@ -18,6 +18,16 @@ export class ModelTreeView {
     private contextMenu: HTMLElement | null = null;
     private rootPackage: EPackage | null = null;
     private visibleNodes: TreeNode[] = [];
+    
+    // Counters for generating unique default names
+    private classCounter = 0;
+    private enumCounter = 0;
+    private packageCounter = 0;
+    private attributeCounter = 0;
+    private referenceCounter = 0;
+    private operationCounter = 0;
+    private parameterCounter = 0;
+    private literalCounter = 0;
 
     constructor(onSelectionChanged: (element: any) => void) {
         this.onSelectionChanged = onSelectionChanged;
@@ -65,6 +75,12 @@ export class ModelTreeView {
                     e.preventDefault();
                     if (this.selectedNode && this.selectedNode.children.length > 0) {
                         this.toggleNode(this.selectedNode);
+                    }
+                    break;
+                case 'Delete':
+                    e.preventDefault();
+                    if (this.selectedNode && this.selectedNode.parent) {
+                        this.deleteNode(this.selectedNode);
                     }
                     break;
             }
@@ -143,6 +159,9 @@ export class ModelTreeView {
 
     public render(rootPackage: EPackage, fileName: string): void {
         this.rootPackage = rootPackage;
+        // Reset counters when loading a new model
+        this.resetCounters();
+        
         const container = document.getElementById('model-tree');
         if (!container) return;
 
@@ -156,6 +175,17 @@ export class ModelTreeView {
         
         // Focus the container to enable keyboard navigation
         container.focus();
+    }
+
+    private resetCounters(): void {
+        this.classCounter = 0;
+        this.enumCounter = 0;
+        this.packageCounter = 0;
+        this.attributeCounter = 0;
+        this.referenceCounter = 0;
+        this.operationCounter = 0;
+        this.parameterCounter = 0;
+        this.literalCounter = 0;
     }
 
     private createRootNode(rootPackage: EPackage, fileName: string): TreeNode {
@@ -402,108 +432,108 @@ export class ModelTreeView {
         };
     }
 
-private renderNode(node: TreeNode, container: HTMLElement, level: number): void {
-    const nodeElement = document.createElement('div');
-    nodeElement.className = 'tree-node';
-    nodeElement.setAttribute('data-type', node.type);
-    nodeElement.style.paddingLeft = `${level * 20}px`;
-    
-    // Create node content
-    const nodeContent = document.createElement('div');
-    nodeContent.className = 'tree-node-content';
-    if (this.selectedNode === node) {
-        nodeContent.classList.add('selected');
-    }
-    
-    // Expand/collapse icon
-    if (node.children.length > 0) {
-        const expandIcon = document.createElement('i');
-        expandIcon.className = `codicon codicon-chevron-${node.expanded ? 'down' : 'right'}`;
-        expandIcon.addEventListener('click', (e) => {
-            e.stopPropagation();
-            this.toggleNode(node);
+    private renderNode(node: TreeNode, container: HTMLElement, level: number): void {
+        const nodeElement = document.createElement('div');
+        nodeElement.className = 'tree-node';
+        nodeElement.setAttribute('data-type', node.type);
+        nodeElement.style.paddingLeft = `${level * 20}px`;
+        
+        // Create node content
+        const nodeContent = document.createElement('div');
+        nodeContent.className = 'tree-node-content';
+        if (this.selectedNode === node) {
+            nodeContent.classList.add('selected');
+        }
+        
+        // Expand/collapse icon
+        if (node.children.length > 0) {
+            const expandIcon = document.createElement('i');
+            expandIcon.className = `codicon codicon-chevron-${node.expanded ? 'down' : 'right'}`;
+            expandIcon.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.toggleNode(node);
+            });
+            nodeContent.appendChild(expandIcon);
+        } else {
+            const spacer = document.createElement('span');
+            spacer.className = 'tree-spacer';
+            nodeContent.appendChild(spacer);
+        }
+        
+        // Type icon
+        const icon = document.createElement('i');
+        icon.className = `codicon ${this.getIconForType(node.type)}`;
+        nodeContent.appendChild(icon);
+        
+        // Label with enhanced styling for EClass super type
+        const label = document.createElement('span');
+        label.className = 'tree-label';
+        
+        if (node.type === 'EClass' && node.element) {
+            // Special handling for EClass with super type
+            this.renderClassLabelWithSuperType(label, node.element);
+        } else {
+            label.textContent = node.label;
+        }
+        
+        nodeContent.appendChild(label);
+        
+        // Click handler
+        nodeContent.addEventListener('click', () => {
+            this.selectNode(node);
         });
-        nodeContent.appendChild(expandIcon);
-    } else {
-        const spacer = document.createElement('span');
-        spacer.className = 'tree-spacer';
-        nodeContent.appendChild(spacer);
-    }
-    
-    // Type icon
-    const icon = document.createElement('i');
-    icon.className = `codicon ${this.getIconForType(node.type)}`;
-    nodeContent.appendChild(icon);
-    
-    // Label with enhanced styling for EClass super type
-    const label = document.createElement('span');
-    label.className = 'tree-label';
-    
-    if (node.type === 'EClass' && node.element) {
-        // Special handling for EClass with super type
-        this.renderClassLabelWithSuperType(label, node.element);
-    } else {
-        label.textContent = node.label;
-    }
-    
-    nodeContent.appendChild(label);
-    
-    // Click handler
-    nodeContent.addEventListener('click', () => {
-        this.selectNode(node);
-    });
-    
-    // Context menu
-    nodeContent.addEventListener('contextmenu', (e) => {
-        e.preventDefault();
-        this.showContextMenu(e, node);
-    });
-    
-    nodeElement.appendChild(nodeContent);
-    container.appendChild(nodeElement);
-    
-    // Render children if expanded
-    if (node.expanded) {
-        const childContainer = document.createElement('div');
-        childContainer.className = 'tree-children';
-        node.children.forEach(child => {
-            this.renderNode(child, childContainer, level + 1);
+        
+        // Context menu
+        nodeContent.addEventListener('contextmenu', (e) => {
+            e.preventDefault();
+            this.showContextMenu(e, node);
         });
-        container.appendChild(childContainer);
+        
+        nodeElement.appendChild(nodeContent);
+        container.appendChild(nodeElement);
+        
+        // Render children if expanded
+        if (node.expanded) {
+            const childContainer = document.createElement('div');
+            childContainer.className = 'tree-children';
+            node.children.forEach(child => {
+                this.renderNode(child, childContainer, level + 1);
+            });
+            container.appendChild(childContainer);
+        }
     }
-}
 
-private renderClassLabelWithSuperType(labelElement: HTMLElement, eClass: EClass): void {
-    const className = eClass.getName() || 'unnamed';
-    
-    // Clear the label
-    labelElement.innerHTML = '';
-    
-    // Add class name
-    const classNameSpan = document.createElement('span');
-    classNameSpan.className = 'class-name';
-    classNameSpan.textContent = className;
-    labelElement.appendChild(classNameSpan);
-    
-    // Get super types
-    const superTypes = eClass.getESuperTypes();
-    if (superTypes && superTypes.size() > 0) {
-        // Add arrow
-        const arrow = document.createElement('span');
-        arrow.className = 'super-type-arrow';
-        arrow.textContent = ' → ';
-        labelElement.appendChild(arrow);
+    private renderClassLabelWithSuperType(labelElement: HTMLElement, eClass: EClass): void {
+        const className = eClass.getName() || 'unnamed';
         
-        // Add super type (just the first one)
-        const superTypesSpan = document.createElement('span');
-        superTypesSpan.className = 'super-types';
+        // Clear the label
+        labelElement.innerHTML = '';
         
-        const superType = superTypes.get(0);
-        const superTypeName = superType.getName() || 'unnamed';
-        superTypesSpan.textContent = superTypeName;
-        labelElement.appendChild(superTypesSpan);
+        // Add class name
+        const classNameSpan = document.createElement('span');
+        classNameSpan.className = 'class-name';
+        classNameSpan.textContent = className;
+        labelElement.appendChild(classNameSpan);
+        
+        // Get super types
+        const superTypes = eClass.getESuperTypes();
+        if (superTypes && superTypes.size() > 0) {
+            // Add arrow
+            const arrow = document.createElement('span');
+            arrow.className = 'super-type-arrow';
+            arrow.textContent = ' → ';
+            labelElement.appendChild(arrow);
+            
+            // Add super type (just the first one)
+            const superTypesSpan = document.createElement('span');
+            superTypesSpan.className = 'super-types';
+            
+            const superType = superTypes.get(0);
+            const superTypeName = superType.getName() || 'unnamed';
+            superTypesSpan.textContent = superTypeName;
+            labelElement.appendChild(superTypesSpan);
+        }
     }
-}
 
     private toggleNode(node: TreeNode): void {
         node.expanded = !node.expanded;
@@ -609,6 +639,9 @@ private renderClassLabelWithSuperType(labelElement: HTMLElement, eClass: EClass)
             } else {
                 const menuItem = document.createElement('div');
                 menuItem.className = 'context-menu-item';
+                if (item.label === 'Delete') {
+                    menuItem.classList.add('danger');
+                }
                 menuItem.innerHTML = `<i class="codicon ${item.icon}"></i> ${item.label}`;
                 menuItem.addEventListener('click', () => {
                     item.action();
@@ -667,11 +700,10 @@ private renderClassLabelWithSuperType(labelElement: HTMLElement, eClass: EClass)
         return items;
     }
 
-    // Context menu actions with actual implementations
+    // Context menu actions with default names instead of prompts
     private addEClass(packageNode: TreeNode): void {
         const pkg = packageNode.element as EPackage;
-        const name = prompt('Enter class name:', 'NewClass');
-        if (!name) return;
+        const name = `Class${++this.classCounter}`;
 
         // Create new EClass
         const eClass = new EClassImpl();
@@ -688,12 +720,14 @@ private renderClassLabelWithSuperType(labelElement: HTMLElement, eClass: EClass)
         packageNode.expanded = true;
         this.refresh();
         this.selectNode(classNode);
+        
+        // Show status message
+        this.showStatus(`Created new class: ${name} (rename in properties panel)`);
     }
 
     private addEEnum(packageNode: TreeNode): void {
         const pkg = packageNode.element as EPackage;
-        const name = prompt('Enter enum name:', 'NewEnum');
-        if (!name) return;
+        const name = `Enum${++this.enumCounter}`;
 
         // Create new EEnum
         const eEnum = new EEnumImpl();
@@ -710,12 +744,13 @@ private renderClassLabelWithSuperType(labelElement: HTMLElement, eClass: EClass)
         packageNode.expanded = true;
         this.refresh();
         this.selectNode(enumNode);
+        
+        this.showStatus(`Created new enum: ${name} (rename in properties panel)`);
     }
 
     private addSubPackage(packageNode: TreeNode): void {
         const parentPkg = packageNode.element as EPackage;
-        const name = prompt('Enter package name:', 'newpackage');
-        if (!name) return;
+        const name = `package${++this.packageCounter}`;
 
         // Create new sub-package
         const subPkg = new EPackageImpl(name, `http://www.example.org/${name}`);
@@ -732,12 +767,13 @@ private renderClassLabelWithSuperType(labelElement: HTMLElement, eClass: EClass)
         packageNode.expanded = true;
         this.refresh();
         this.selectNode(subPkgNode);
+        
+        this.showStatus(`Created new package: ${name} (rename in properties panel)`);
     }
 
     private addAttribute(classNode: TreeNode): void {
         const eClass = classNode.element as EClass;
-        const name = prompt('Enter attribute name:', 'newAttribute');
-        if (!name) return;
+        const name = `attribute${++this.attributeCounter}`;
 
         // Create new attribute
         const attr = new EAttributeImpl();
@@ -758,12 +794,13 @@ private renderClassLabelWithSuperType(labelElement: HTMLElement, eClass: EClass)
         classNode.expanded = true;
         this.refresh();
         this.selectNode(attrNode);
+        
+        this.showStatus(`Created new attribute: ${name} (configure in properties panel)`);
     }
 
     private addReference(classNode: TreeNode): void {
         const eClass = classNode.element as EClass;
-        const name = prompt('Enter reference name:', 'newReference');
-        if (!name) return;
+        const name = `reference${++this.referenceCounter}`;
 
         // Create new reference
         const ref = new EReferenceImpl();
@@ -783,12 +820,13 @@ private renderClassLabelWithSuperType(labelElement: HTMLElement, eClass: EClass)
         classNode.expanded = true;
         this.refresh();
         this.selectNode(refNode);
+        
+        this.showStatus(`Created new reference: ${name} (configure in properties panel)`);
     }
 
     private addOperation(classNode: TreeNode): void {
         const eClass = classNode.element as EClass;
-        const name = prompt('Enter operation name:', 'newOperation');
-        if (!name) return;
+        const name = `operation${++this.operationCounter}`;
 
         // Create new operation
         const op = new EOperationImpl();
@@ -805,12 +843,13 @@ private renderClassLabelWithSuperType(labelElement: HTMLElement, eClass: EClass)
         classNode.expanded = true;
         this.refresh();
         this.selectNode(opNode);
+        
+        this.showStatus(`Created new operation: ${name} (configure in properties panel)`);
     }
 
     private addParameter(opNode: TreeNode): void {
         const operation = opNode.element as EOperation;
-        const name = prompt('Enter parameter name:', 'param');
-        if (!name) return;
+        const name = `param${++this.parameterCounter}`;
 
         // Create new parameter
         const param = new EParameterImpl();
@@ -829,12 +868,13 @@ private renderClassLabelWithSuperType(labelElement: HTMLElement, eClass: EClass)
         opNode.expanded = true;
         this.refresh();
         this.selectNode(paramNode);
+        
+        this.showStatus(`Created new parameter: ${name} (configure in properties panel)`);
     }
 
     private addEnumLiteral(enumNode: TreeNode): void {
         const eEnum = enumNode.element as EEnum;
-        const name = prompt('Enter literal name:', 'LITERAL');
-        if (!name) return;
+        const name = `LITERAL_${++this.literalCounter}`;
 
         // Create new enum literal
         const literal = new EEnumLiteralImpl();
@@ -860,10 +900,12 @@ private renderClassLabelWithSuperType(labelElement: HTMLElement, eClass: EClass)
         enumNode.expanded = true;
         this.refresh();
         this.selectNode(literalNode);
+        
+        this.showStatus(`Created new literal: ${name} (rename in properties panel)`);
     }
 
     private deleteNode(node: TreeNode): void {
-        if (!node.parent || !confirm(`Delete ${node.label}?`)) return;
+        if (!node.parent) return;
 
         const parent = node.parent.element;
         const element = node.element;
@@ -916,6 +958,20 @@ private renderClassLabelWithSuperType(labelElement: HTMLElement, eClass: EClass)
         }
 
         this.refresh();
+        this.showStatus(`Deleted ${node.type}: ${node.label}`);
+    }
+
+    private showStatus(message: string): void {
+        const statusElement = document.getElementById('status-message');
+        if (statusElement) {
+            statusElement.textContent = message;
+            // Clear status after 3 seconds
+            setTimeout(() => {
+                if (statusElement.textContent === message) {
+                    statusElement.textContent = 'Ready';
+                }
+            }, 3000);
+        }
     }
 
     // Helper methods
