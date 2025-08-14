@@ -706,7 +706,7 @@ export class ModelTreeView {
           },
           {
             label: "Add Sub-Package",
-            icon: "codicon-folder",
+            icon: "codicon-package",
             action: () => this.addSubPackage(node),
           }
         );
@@ -725,7 +725,7 @@ export class ModelTreeView {
           },
           {
             label: "Add Operation",
-            icon: "codicon-symbol-method",
+            icon: "codicon-gear",
             action: () => this.addOperation(node),
           }
         );
@@ -1081,12 +1081,12 @@ export class ModelTreeView {
   private getIconForType(type: string): string {
     const icons: { [key: string]: string } = {
       root: "codicon-file",
-      EPackage: "codicon-folder",
+      EPackage: "codicon-package",
       EClass: "codicon-symbol-class",
       EEnum: "codicon-symbol-enum",
       EAttribute: "codicon-symbol-field",
-      EReference: "codicon-references",
-      EOperation: "codicon-symbol-method",
+      EReference: "codicon-arrow-right",
+      EOperation: "codicon-gear",
       EParameter: "codicon-symbol-parameter",
       EEnumLiteral: "codicon-symbol-constant",
     };

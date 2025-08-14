@@ -77,7 +77,7 @@ export function activate(context: vscode.ExtensionContext) {
     );
 
     // Show information message on activation
-    vscode.window.showInformationMessage('TMF Ecore Editor is ready! Open any .ecore file to start editing.');
+    // vscode.window.showInformationMessage('TMF Ecore Editor is ready! Open any .ecore file to start editing.');
 }
 
 export function deactivate() {
