@@ -565,6 +565,7 @@ export class PropertiesPanel {
         }
       );
     } else if (this.isEOperation(element)) {
+      const upperBound = element.getUpperBound();
       properties.push({
         name: "eType",
         label: "Return Type",
@@ -574,7 +575,13 @@ export class PropertiesPanel {
           ...this.getAvailableDataTypes(),
           ...this.getAvailableClasses(),
         ],
-      });
+      },
+      {
+          name: "multiplicity",
+          label: "Many-valued",
+          type: "multiplicity",
+          value: upperBound === -1, // true if many-valued, false if single-valued
+        });
     } else if (this.isEParameter(element)) {
       const upperBound = element.getUpperBound ? element.getUpperBound() : 1;
       const lowerBound = element.getLowerBound ? element.getLowerBound() : 0;
