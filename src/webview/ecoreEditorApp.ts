@@ -53,21 +53,26 @@ export class EcoreEditorApp {
                     </div>
                     <div class="toolbar">
                         <div class="toolbar-separator"></div>
-                        <button id="expand-all-btn" class="toolbar-btn" title="Expand All">
-                            <i class="codicon codicon-expand-all"></i>
-                        </button>
-                        <button id="collapse-all-btn" class="toolbar-btn" title="Collapse All">
-                            <i class="codicon codicon-collapse-all"></i>
-                        </button>
+
                     </div>
                 </div>
                 
                 <div class="main-content">
                     <div class="split-panel">
                         <div class="tree-panel">
-                            <div class="panel-header">
-                                <i class="codicon codicon-list-tree"></i>
-                                Model Structure
+                            <div class="panel-header" style="justify-content: space-between">
+                                <div>
+                                    <i class="codicon codicon-list-tree"></i>
+                                    Model Structure
+                                </div>
+                                <div class="toolbar">
+                                    <button id="expand-all-btn" class="toolbar-btn" title="Expand All">
+                                        <i class="codicon codicon-expand-all"></i>
+                                    </button>
+                                    <button id="collapse-all-btn" class="toolbar-btn" title="Collapse All">
+                                        <i class="codicon codicon-collapse-all"></i>
+                                    </button>                                
+                                </div>
                             </div>
                             <div id="model-tree" class="tree-container"></div>
                         </div>
