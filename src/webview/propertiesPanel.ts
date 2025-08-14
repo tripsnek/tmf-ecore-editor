@@ -7,7 +7,9 @@ interface PropertyDescriptor {
     | "number"
     | "enum"
     | "reference"
-    | "multiReference";
+    | "multiReference"
+    | "classType"
+    | "multiplicity";
   value: any;
   options?: any[];
   readOnly?: boolean;
@@ -119,6 +121,12 @@ export class PropertiesPanel {
       case "number":
         input = this.createNumberInput(prop);
         break;
+      case "classType":
+        input = this.createClassTypeInput(prop);
+        break;
+      case "multiplicity":
+        input = this.createMultiplicityInput(prop);
+        break;
       default:
         input = this.createTextInput(prop);
     }
@@ -208,6 +216,72 @@ export class PropertiesPanel {
     });
 
     return select;
+  }
+
+  private createClassTypeInput(prop: PropertyDescriptor): HTMLElement {
+    const select = document.createElement("select");
+    select.className = "property-select";
+    select.disabled = prop.readOnly || false;
+
+    // Add options for class type (Concrete/Abstract/Interface)
+    const options = [
+      { value: "concrete", label: "Concrete" },
+      { value: "abstract", label: "Abstract" },
+      { value: "interface", label: "Interface" }
+    ];
+
+    options.forEach((option) => {
+      const optionElement = document.createElement("option");
+      optionElement.value = option.value;
+      optionElement.textContent = option.label;
+      if (prop.value === option.value) {
+        optionElement.selected = true;
+      }
+      select.appendChild(optionElement);
+    });
+
+    select.addEventListener("change", () => {
+      const selectedValue = select.value;
+      
+      // Update both abstract and interface properties based on selection
+      switch (selectedValue) {
+        case "concrete":
+          this.onPropertyChanged(this.currentElement, "abstract", false);
+          this.onPropertyChanged(this.currentElement, "interface", false);
+          break;
+        case "abstract":
+          this.onPropertyChanged(this.currentElement, "abstract", true);
+          this.onPropertyChanged(this.currentElement, "interface", false);
+          break;
+        case "interface":
+          this.onPropertyChanged(this.currentElement, "abstract", false);
+          this.onPropertyChanged(this.currentElement, "interface", true);
+          break;
+      }
+    });
+
+    return select;
+  }
+
+  private createMultiplicityInput(prop: PropertyDescriptor): HTMLElement {
+    const container = document.createElement("div");
+    container.className = "checkbox-container";
+
+    const input = document.createElement("input");
+    input.type = "checkbox";
+    input.className = "property-checkbox";
+    input.checked = prop.value === true; // true = many-valued, false = single-valued
+    input.disabled = prop.readOnly || false;
+
+    input.addEventListener("change", () => {
+      // Update the upper bound based on checkbox state
+      // Many-valued = -1, Single-valued = 1
+      const upperBound = input.checked ? -1 : 1;
+      this.onPropertyChanged(this.currentElement, "upperBound", upperBound);
+    });
+
+    container.appendChild(input);
+    return container;
   }
 
   private createReferenceInput(prop: PropertyDescriptor): HTMLElement {
@@ -367,18 +441,23 @@ export class PropertiesPanel {
         }
       );
     } else if (this.isEClass(element)) {
+      // Determine current class type based on abstract and interface values
+      const isAbstract = element.isAbstract ? element.isAbstract() : false;
+      const isInterface = element.isInterface ? element.isInterface() : false;
+      
+      let classType = "concrete";
+      if (isAbstract && !isInterface) {
+        classType = "abstract";
+      } else if (!isAbstract && isInterface) {
+        classType = "interface";
+      }
+
       properties.push(
         {
-          name: "abstract",
-          label: "Abstract",
-          type: "boolean",
-          value: element.isAbstract ? element.isAbstract() : false,
-        },
-        {
-          name: "interface",
-          label: "Interface",
-          type: "boolean",
-          value: element.isInterface ? element.isInterface() : false,
+          name: "classType",
+          label: "Class Type",
+          type: "classType",
+          value: classType,
         },
         {
           name: "eSuperTypes",
@@ -391,6 +470,8 @@ export class PropertiesPanel {
     } else if (this.isEAttribute(element)) {
       // Get current type for EAttribute
       const currentType = element.getEType ? element.getEType() : null;
+      const upperBound = element.getUpperBound ? element.getUpperBound() : 1;
+      const lowerBound = element.getLowerBound ? element.getLowerBound() : 0;
 
       properties.push(
         {
@@ -400,36 +481,24 @@ export class PropertiesPanel {
           value: currentType,
           options: this.getAvailableDataTypes(currentType),
         },
-        {
-          name: "lowerBound",
-          label: "Lower Bound",
-          type: "number",
-          value: element.getLowerBound ? element.getLowerBound() : 0,
-        },
-        {
-          name: "upperBound",
-          label: "Upper Bound",
-          type: "number",
-          value: element.getUpperBound ? element.getUpperBound() : 1,
-        },
         // {
-        //     name: 'defaultValue',
-        //     label: 'Default Value',
-        //     type: 'string',
-        //     value: element.getDefaultValue ? element.getDefaultValue() : ''
+        //   name: "lowerBound",
+        //   label: "Lower Bound",
+        //   type: "number",
+        //   value: lowerBound,
         // },
+        {
+          name: "multiplicity",
+          label: "Many-valued",
+          type: "multiplicity",
+          value: upperBound === -1, // true if many-valued, false if single-valued
+        },
         {
           name: "id",
           label: "Is ID",
           type: "boolean",
           value: element.isId ? element.isId() : false,
         },
-        // {
-        //     name: 'changeable',
-        //     label: 'Changeable',
-        //     type: 'boolean',
-        //     value: element.isChangeable ? element.isChangeable() : true
-        // },
         {
           name: "volatile",
           label: "Volatile",
@@ -442,22 +511,12 @@ export class PropertiesPanel {
           type: "boolean",
           value: element.isTransient ? element.isTransient() : false,
         }
-        // {
-        //     name: 'unsettable',
-        //     label: 'Unsettable',
-        //     type: 'boolean',
-        //     value: element.isUnsettable ? element.isUnsettable() : false
-        // },
-        // {
-        //     name: 'derived',
-        //     label: 'Derived',
-        //     type: 'boolean',
-        //     value: element.isDerived ? element.isDerived() : false
-        // }
       );
     } else if (this.isEReference(element)) {
       // Get current type for EReference
       const currentType = element.getEType ? element.getEType() : null;
+      const upperBound = element.getUpperBound ? element.getUpperBound() : 1;
+      const lowerBound = element.getLowerBound ? element.getLowerBound() : 0;
 
       properties.push(
         {
@@ -467,17 +526,17 @@ export class PropertiesPanel {
           value: currentType,
           options: this.getAvailableClasses(null, currentType),
         },
+        // {
+        //   name: "lowerBound",
+        //   label: "Lower Bound",
+        //   type: "number",
+        //   value: lowerBound,
+        // },
         {
-          name: "lowerBound",
-          label: "Lower Bound",
-          type: "number",
-          value: element.getLowerBound ? element.getLowerBound() : 0,
-        },
-        {
-          name: "upperBound",
-          label: "Upper Bound",
-          type: "number",
-          value: element.getUpperBound ? element.getUpperBound() : 1,
+          name: "multiplicity",
+          label: "Many-valued",
+          type: "multiplicity",
+          value: upperBound === -1, // true if many-valued, false if single-valued
         },
         {
           name: "containment",
@@ -485,12 +544,6 @@ export class PropertiesPanel {
           type: "boolean",
           value: element.isContainment ? element.isContainment() : false,
         },
-        // {
-        //     name: 'resolveProxies',
-        //     label: 'Resolve Proxies',
-        //     type: 'boolean',
-        //     value: element.isResolveProxies ? element.isResolveProxies() : true
-        // },
         {
           name: "eOpposite",
           label: "Opposite",
@@ -498,12 +551,6 @@ export class PropertiesPanel {
           value: element.getEOpposite ? element.getEOpposite() : null,
           options: this.getAvailableReferences(element),
         },
-        // {
-        //     name: 'changeable',
-        //     label: 'Changeable',
-        //     type: 'boolean',
-        //     value: element.isChangeable ? element.isChangeable() : true
-        // },
         {
           name: "volatile",
           label: "Volatile",
@@ -516,18 +563,6 @@ export class PropertiesPanel {
           type: "boolean",
           value: element.isTransient ? element.isTransient() : false,
         }
-        // {
-        //     name: 'unsettable',
-        //     label: 'Unsettable',
-        //     type: 'boolean',
-        //     value: element.isUnsettable ? element.isUnsettable() : false
-        // },
-        // {
-        //     name: 'derived',
-        //     label: 'Derived',
-        //     type: 'boolean',
-        //     value: element.isDerived ? element.isDerived() : false
-        // }
       );
     } else if (this.isEOperation(element)) {
       properties.push({
@@ -541,6 +576,9 @@ export class PropertiesPanel {
         ],
       });
     } else if (this.isEParameter(element)) {
+      const upperBound = element.getUpperBound ? element.getUpperBound() : 1;
+      const lowerBound = element.getLowerBound ? element.getLowerBound() : 0;
+
       properties.push(
         {
           name: "eType",
@@ -552,17 +590,17 @@ export class PropertiesPanel {
             ...this.getAvailableClasses(),
           ],
         },
+        // {
+        //   name: "lowerBound",
+        //   label: "Lower Bound",
+        //   type: "number",
+        //   value: lowerBound,
+        // },
         {
-          name: "lowerBound",
-          label: "Lower Bound",
-          type: "number",
-          value: element.getLowerBound ? element.getLowerBound() : 0,
-        },
-        {
-          name: "upperBound",
-          label: "Upper Bound",
-          type: "number",
-          value: element.getUpperBound ? element.getUpperBound() : 1,
+          name: "multiplicity",
+          label: "Many-valued",
+          type: "multiplicity",
+          value: upperBound === -1, // true if many-valued, false if single-valued
         }
       );
     } else if (this.isEEnumLiteral(element)) {
