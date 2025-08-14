@@ -216,29 +216,149 @@ export class EcoreEditorProvider implements vscode.CustomTextEditorProvider {
             </html>`;
     }
 
-    public async runSourceCodeGeneration(ecorePath: string, overwriteImplFiles?: boolean, outputPath?: string): Promise<void> {
-        // Validate the path exists
-        const fileUri = vscode.Uri.file(ecorePath);
-        try {
-            await vscode.workspace.fs.stat(fileUri);
-        } catch (error) {
-            throw new Error(`Ecore file not found: ${ecorePath}`);
-        }
-        
-        // If outputPath is provided, ensure it's absolute or make it relative to the ecore file
-        let resolvedOutputPath = outputPath;
-        if (outputPath && !path.isAbsolute(outputPath)) {
-            resolvedOutputPath = path.join(path.dirname(ecorePath), outputPath);
-        }
-        
-        // Call the generation function
-        console.log('running generateFromEcore of ' + ecorePath + ' to ' + resolvedOutputPath);
-        const outDir = await generateFromEcore(ecorePath, overwriteImplFiles, resolvedOutputPath);
-        console.log('generation completed');
-
-        console.log('formatting all *.ts files in outDir (recursively) using VSCode, if available')
-        //TODO: implement here
+public async runSourceCodeGeneration(ecorePath: string, overwriteImplFiles?: boolean, outputPath?: string): Promise<void> {
+    // Validate the path exists
+    const fileUri = vscode.Uri.file(ecorePath);
+    try {
+        await vscode.workspace.fs.stat(fileUri);
+    } catch (error) {
+        throw new Error(`Ecore file not found: ${ecorePath}`);
     }
+    
+    // If outputPath is provided, ensure it's absolute or make it relative to the ecore file
+    let resolvedOutputPath = outputPath;
+    if (outputPath && !path.isAbsolute(outputPath)) {
+        resolvedOutputPath = path.join(path.dirname(ecorePath), outputPath);
+    }
+    
+    // Call the generation function
+    console.log('running generateFromEcore of ' + ecorePath + ' to ' + resolvedOutputPath);
+    const outDir = await generateFromEcore(ecorePath, overwriteImplFiles, resolvedOutputPath);
+    console.log('generation completed');
+
+    console.log('formatting all *.ts files in outDir (recursively) using VSCode, if available');
+    await this.formatGeneratedTypeScriptFiles(outDir);
+}
+
+/**
+ * Formats all TypeScript files in the specified directory recursively using VSCode's formatting provider
+ */
+private async formatGeneratedTypeScriptFiles(outputDir: string): Promise<void> {
+    try {
+        // Convert to URI and validate directory exists
+        const outputUri = vscode.Uri.file(outputDir);
+        await vscode.workspace.fs.stat(outputUri);
+        
+        console.log(`Searching for TypeScript files in: ${outputDir}`);
+        
+        // Find all .ts files recursively in the output directory
+        const tsFiles = await vscode.workspace.findFiles(
+            new vscode.RelativePattern(outputUri, '**/*.ts'),
+            null, // no exclude pattern
+            undefined // no limit
+        );
+        
+        if (tsFiles.length === 0) {
+            console.log('No TypeScript files found to format');
+            return;
+        }
+        
+        console.log(`Found ${tsFiles.length} TypeScript file(s) to format`);
+        
+        // Show progress for formatting operation
+        await vscode.window.withProgress({
+            location: vscode.ProgressLocation.Notification,
+            title: 'Formatting generated TypeScript files',
+            cancellable: false
+        }, async (progress) => {
+            let formattedCount = 0;
+            let failedCount = 0;
+            
+            for (let i = 0; i < tsFiles.length; i++) {
+                const file = tsFiles[i];
+                const fileName = path.basename(file.fsPath);
+                
+                // Update progress
+                progress.report({
+                    increment: (100 / tsFiles.length),
+                    message: `${i + 1}/${tsFiles.length}: ${fileName}`
+                });
+                
+                try {
+                    await this.formatSingleTypeScriptFile(file);
+                    formattedCount++;
+                    console.log(`Formatted: ${fileName}`);
+                } catch (error) {
+                    failedCount++;
+                    console.warn(`Failed to format ${fileName}:`, error);
+                }
+            }
+            
+            const message = `Formatting complete: ${formattedCount} successful, ${failedCount} failed`;
+            console.log(message);
+            
+            if (failedCount > 0) {
+                vscode.window.showWarningMessage(
+                    `${message}. Some files could not be formatted - check the output for details.`
+                );
+            }
+        });
+        
+    } catch (error) {
+        console.error('Error during TypeScript file formatting:', error);
+        vscode.window.showWarningMessage(
+            `Failed to format generated files: ${error}. Files were generated but not formatted.`
+        );
+    }
+}
+
+/**
+ * Formats a single TypeScript file using VSCode's formatting provider
+ */
+private async formatSingleTypeScriptFile(fileUri: vscode.Uri): Promise<void> {
+    try {
+        // Check if file exists and is readable
+        await vscode.workspace.fs.stat(fileUri);
+        
+        // Open the document (this loads it into VSCode's document cache)
+        const document = await vscode.workspace.openTextDocument(fileUri);
+        
+        // Check if the document is a TypeScript file
+        if (document.languageId !== 'typescript') {
+            // Set language mode to TypeScript to ensure proper formatting
+            await vscode.languages.setTextDocumentLanguage(document, 'typescript');
+        }
+        
+        // Execute formatting command
+        const edits = await vscode.commands.executeCommand<vscode.TextEdit[]>(
+            'vscode.executeFormatDocumentProvider',
+            fileUri,
+            {
+                // Use default formatting options, but you can customize these
+                insertSpaces: true,
+                tabSize: 2
+            }
+        );
+        
+        // Apply the formatting edits if any were returned
+        if (edits && edits.length > 0) {
+            const workspaceEdit = new vscode.WorkspaceEdit();
+            workspaceEdit.set(fileUri, edits);
+            
+            const success = await vscode.workspace.applyEdit(workspaceEdit);
+            if (!success) {
+                throw new Error('Failed to apply formatting edits');
+            }
+            
+            // Save the document after formatting
+            await document.save();
+        }
+        
+    } catch (error) {
+        // Re-throw with more context
+        throw new Error(`Could not format ${path.basename(fileUri.fsPath)}: ${error}`);
+    }
+}
 }
 
 function getNonce() {
