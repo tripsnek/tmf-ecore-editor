@@ -52,8 +52,11 @@ export class EcoreEditorApp {
                         <span id="file-name">${this.fileName}</span>
                     </div>
                     <div class="toolbar">
+                        <button id="generate-btn" class="toolbar-btn toolbar-btn-primary" title="Generate Source Code">
+                            <i class="codicon codicon-play"></i>
+                            Generate Code
+                        </button>
                         <div class="toolbar-separator"></div>
-
                     </div>
                 </div>
                 
@@ -98,6 +101,55 @@ export class EcoreEditorApp {
                     <span id="status-message">Ready</span>
                     <span id="selection-info" class="selection-info"></span>
                 </div>
+                
+                <!-- Generation Modal -->
+                <div id="generate-modal" class="modal" style="display: none;">
+                    <div class="modal-overlay"></div>
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h3>Generate Source Code</h3>
+                            <button class="modal-close" id="modal-close-btn">
+                                <i class="codicon codicon-close"></i>
+                            </button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="modal-info">
+                                <i class="codicon codicon-info"></i>
+                                <span>Generate source code from the current Ecore model</span>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label class="checkbox-label">
+                                    <input type="checkbox" id="overwrite-checkbox" />
+                                    <span>Overwrite existing implementation files</span>
+                                </label>
+                                <div class="form-help">
+                                    If unchecked, existing implementation files will be preserved
+                                </div>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="output-path">Output Directory (optional)</label>
+                                <input 
+                                    type="text" 
+                                    id="output-path" 
+                                    class="form-input" 
+                                    placeholder="Leave empty to use same directory as .ecore file"
+                                />
+                                <div class="form-help">
+                                    Specify a custom output directory for generated files
+                                </div>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button class="btn btn-secondary" id="cancel-generate-btn">Cancel</button>
+                            <button class="btn btn-primary" id="confirm-generate-btn">
+                                <i class="codicon codicon-play"></i>
+                                Generate
+                            </button>
+                        </div>
+                    </div>
+                </div>
             </div>
         `;
 
@@ -106,11 +158,68 @@ export class EcoreEditorApp {
     }
 
     private setupEventListeners(): void {
-        // Toolbar buttons - removed save button
-        document.getElementById('undo-btn')?.addEventListener('click', () => this.undo());
-        document.getElementById('redo-btn')?.addEventListener('click', () => this.redo());
+        // Toolbar buttons
         document.getElementById('expand-all-btn')?.addEventListener('click', () => this.treeView.expandAll());
         document.getElementById('collapse-all-btn')?.addEventListener('click', () => this.treeView.collapseAll());
+        
+        // Setup generation modal
+        this.setupGenerationModal();
+    }
+
+    private setupGenerationModal(): void {
+        const generateBtn = document.getElementById('generate-btn');
+        const modal = document.getElementById('generate-modal');
+        const closeBtn = document.getElementById('modal-close-btn');
+        const cancelBtn = document.getElementById('cancel-generate-btn');
+        const confirmBtn = document.getElementById('confirm-generate-btn');
+        const modalOverlay = modal?.querySelector('.modal-overlay') as HTMLElement;
+        
+        if (!generateBtn || !modal) return;
+        
+        // Show modal
+        generateBtn.addEventListener('click', () => {
+            modal.style.display = 'flex';
+            // Reset form
+            const overwriteCheckbox = document.getElementById('overwrite-checkbox') as HTMLInputElement;
+            const outputPath = document.getElementById('output-path') as HTMLInputElement;
+            if (overwriteCheckbox) overwriteCheckbox.checked = false;
+            if (outputPath) outputPath.value = '';
+        });
+        
+        // Hide modal
+        const hideModal = () => {
+            modal.style.display = 'none';
+        };
+        
+        closeBtn?.addEventListener('click', hideModal);
+        cancelBtn?.addEventListener('click', hideModal);
+        modalOverlay?.addEventListener('click', hideModal);
+        
+        // Generate code
+        confirmBtn?.addEventListener('click', () => {
+            const overwriteCheckbox = document.getElementById('overwrite-checkbox') as HTMLInputElement;
+            const outputPathInput = document.getElementById('output-path') as HTMLInputElement;
+            
+            const overwriteImplFiles = overwriteCheckbox?.checked || false;
+            const outputPath = outputPathInput?.value.trim() || '';
+            
+            // Send message to extension
+            vscode.postMessage({
+                command: 'generateCode',
+                overwriteImplFiles,
+                outputPath
+            });
+            
+            hideModal();
+            this.setStatus('Generating source code...');
+        });
+        
+        // Handle escape key to close modal
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && modal.style.display === 'flex') {
+                hideModal();
+            }
+        });
     }
 
     private setupSplitter(): void {
@@ -163,6 +272,14 @@ export class EcoreEditorApp {
                     break;
                 case 'error':
                     this.showError(message.message);
+                    break;
+                case 'generationComplete':
+                    // Handle generation completion
+                    if (message.success) {
+                        this.setStatus(message.message);
+                    } else {
+                        this.setStatus(`Error: ${message.message}`);
+                    }
                     break;
             }
         });
@@ -290,6 +407,14 @@ export class EcoreEditorApp {
         const statusElement = document.getElementById('status-message');
         if (statusElement) {
             statusElement.textContent = message;
+            // Clear status message after 5 seconds for success messages
+            if (!message.startsWith('Error:')) {
+                setTimeout(() => {
+                    if (statusElement.textContent === message) {
+                        statusElement.textContent = 'Ready';
+                    }
+                }, 5000);
+            }
         }
     }
 

@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
-import { EPackage, EcoreParser} from '@tripsnek/tmf';
+import { EPackage, EcoreParser, generateFromEcore} from '@tripsnek/tmf';
 
 export class EcoreEditorProvider implements vscode.CustomTextEditorProvider {
     private static readonly viewType = 'tmf-ecore-editor.ecoreEditor';
@@ -64,6 +64,45 @@ export class EcoreEditorProvider implements vscode.CustomTextEditorProvider {
                         updatingFromWebview = true;
                         await this.updateTextDocument(document, message.content);
                         updatingFromWebview = false;
+                        break;
+                    
+                    case 'generateCode':
+                        // Generate source code
+                        try {
+                            const { overwriteImplFiles, outputPath } = message;
+                            console.log(`Generating code: overwrite=${overwriteImplFiles}, output=${outputPath || 'default'}`);
+                            
+                            // Call the generation method
+                            await this.runSourceCodeGeneration(
+                                document.fileName,
+                                overwriteImplFiles,
+                                outputPath || undefined
+                            );
+                            
+                            // Send success message back to webview
+                            webviewPanel.webview.postMessage({
+                                type: 'generationComplete',
+                                success: true,
+                                message: `Source code generated successfully${outputPath ? ` to ${outputPath}` : ''}`
+                            });
+                            
+                            vscode.window.showInformationMessage(
+                                `Source code generated successfully${outputPath ? ` to ${outputPath}` : ''}`
+                            );
+                        } catch (error) {
+                            console.error('Generation failed:', error);
+                            
+                            // Send error message back to webview
+                            webviewPanel.webview.postMessage({
+                                type: 'generationComplete',
+                                success: false,
+                                message: `Failed to generate source code: ${error}`
+                            });
+                            
+                            vscode.window.showErrorMessage(
+                                `Failed to generate source code: ${error}`
+                            );
+                        }
                         break;
                     
                     case 'showMessage':
@@ -175,6 +214,30 @@ export class EcoreEditorProvider implements vscode.CustomTextEditorProvider {
                 <script nonce="${nonce}" src="${scriptUri}"></script>
             </body>
             </html>`;
+    }
+
+    public async runSourceCodeGeneration(ecorePath: string, overwriteImplFiles?: boolean, outputPath?: string): Promise<void> {
+        // Validate the path exists
+        const fileUri = vscode.Uri.file(ecorePath);
+        try {
+            await vscode.workspace.fs.stat(fileUri);
+        } catch (error) {
+            throw new Error(`Ecore file not found: ${ecorePath}`);
+        }
+        
+        // If outputPath is provided, ensure it's absolute or make it relative to the ecore file
+        let resolvedOutputPath = outputPath;
+        if (outputPath && !path.isAbsolute(outputPath)) {
+            resolvedOutputPath = path.join(path.dirname(ecorePath), outputPath);
+        }
+        
+        // Call the generation function
+        console.log('running generateFromEcore of ' + ecorePath + ' to ' + resolvedOutputPath);
+        const outDir = await generateFromEcore(ecorePath, overwriteImplFiles, resolvedOutputPath);
+        console.log('generation completed');
+
+        console.log('formatting all *.ts files in outDir (recursively) using VSCode, if available')
+        //TODO: implement here
     }
 }
 
