@@ -52,12 +52,6 @@ export class EcoreEditorApp {
                         <span id="file-name">${this.fileName}</span>
                     </div>
                     <div class="toolbar">
-                        <button id="undo-btn" class="toolbar-btn" title="Undo">
-                            <i class="codicon codicon-discard"></i>
-                        </button>
-                        <button id="redo-btn" class="toolbar-btn" title="Redo">
-                            <i class="codicon codicon-redo"></i>
-                        </button>
                         <div class="toolbar-separator"></div>
                         <button id="expand-all-btn" class="toolbar-btn" title="Expand All">
                             <i class="codicon codicon-expand-all"></i>
@@ -276,7 +270,7 @@ export class EcoreEditorApp {
             this.showError(`Failed to update document: ${error}`);
         }
     }
-
+    
     private undo(): void {
         // TODO: Implement undo functionality
         this.setStatus('Undo not yet implemented');
