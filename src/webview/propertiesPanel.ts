@@ -578,7 +578,7 @@ export class PropertiesPanel {
       },
       {
           name: "multiplicity",
-          label: "Many-valued",
+          label: "Many-valued (Return Type)",
           type: "multiplicity",
           value: upperBound === -1, // true if many-valued, false if single-valued
         });
