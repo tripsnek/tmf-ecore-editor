@@ -11,4 +11,5 @@ webpack.config.js
 node_modules/**
 !node_modules/@tripsnek/tmf/**
 !node_modules/@vscode/codicons/**
+!node_modules/uuid/**
 !dist/**

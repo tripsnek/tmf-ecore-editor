@@ -3,6 +3,7 @@
   "displayName": "TMF Ecore Editor",
   "description": "Visual editor for Eclipse Ecore models",
   "version": "0.1.0",
+  "publisher": "tripsnek",
   "engines": {
     "vscode": "^1.74.0"
   },
@@ -23,7 +24,8 @@
             "filenamePattern": "*.ecore"
           }
         ],
-        "priority": "default"
+        "priority": "option",
+        "supportsMultipleEditorsPerDocument": false
       }
     ],
     "commands": [
@@ -56,6 +58,7 @@
   },
   "dependencies": {
     "@tripsnek/tmf": "^1.1.5",
-    "@vscode/codicons": "^0.0.33"
+    "@vscode/codicons": "^0.0.33",
+    "uuid": "^11.1.0"
   }
 }
