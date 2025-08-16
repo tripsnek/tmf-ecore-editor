@@ -94,6 +94,7 @@ export class PropertiesPanel {
           display: flex;
           align-items: center;
           gap: 4px;
+          toolbar-btn toolbar-btn-primary
         `;
         button.addEventListener('click', () => {
           if (this.onAddChild) {
@@ -181,7 +182,7 @@ export class PropertiesPanel {
           },
           {
             label: 'Add Reference',
-            icon: 'codicon-references',
+            icon: 'codicon-arrow-right',
             type: 'addReference',
           },
           {

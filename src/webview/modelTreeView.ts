@@ -829,7 +829,7 @@ private createAttributeNode(attr: EAttribute): TreeNode {
           },
           {
             label: 'Add Reference',
-            icon: 'codicon-references',
+            icon: 'codicon-arrow-right',
             action: () => this.addReference(node),
           },
           {
