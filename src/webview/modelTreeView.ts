@@ -350,68 +350,6 @@ export class ModelTreeView {
     return className;
   }
 
-  private createEnumNode(eEnum: EEnum): TreeNode {
-    const node: TreeNode = {
-      element: eEnum,
-      type: 'EEnum',
-      id: this.generateId(eEnum),
-      label: eEnum.getName() || 'unnamed',
-      children: [],
-      expanded: false,
-    };
-
-    this.nodeMap.set(node.id, node);
-
-    // Add enum literals
-    const literals = eEnum.getELiterals();
-    for (let i = 0; i < literals.size(); i++) {
-      const literal = literals.get(i);
-      const literalNode: TreeNode = {
-        element: literal,
-        type: 'EEnumLiteral',
-        id: this.generateId(literal),
-        label: literal.getName() || 'unnamed',
-        children: [],
-        expanded: false,
-        parent: node,
-      };
-      node.children.push(literalNode);
-    }
-
-    return node;
-  }
-
-  private createAttributeNode(attr: EAttribute): TreeNode {
-    const type = attr.getEType() ? attr.getEType().getName() : 'void';
-    const multiplicity = this.getMultiplicity(attr);
-    const label = `${attr.getName() || 'unnamed'} : ${type}${multiplicity}`;
-
-    return {
-      element: attr,
-      type: 'EAttribute',
-      id: this.generateId(attr),
-      label: label,
-      children: [],
-      expanded: false,
-    };
-  }
-
-  private createReferenceNode(ref: EReference): TreeNode {
-    const type = ref.getEType() ? ref.getEType().getName() : 'void';
-    const multiplicity = this.getMultiplicity(ref);
-    const containment = ref.isContainment() ? ' [containment]' : '';
-    const label = `${ref.getName() || 'unnamed'} : ${type}${multiplicity}${containment}`;
-
-    return {
-      element: ref,
-      type: 'EReference',
-      id: this.generateId(ref),
-      label: label,
-      children: [],
-      expanded: false,
-    };
-  }
-
   private createOperationNode(op: EOperation): TreeNode {
     const node: TreeNode = {
       element: op,
@@ -436,19 +374,101 @@ export class ModelTreeView {
     return node;
   }
 
-  private createParameterNode(param: EParameter): TreeNode {
-    const type = param.getEType() ? param.getEType().getName() : 'void';
-    const multiplicity = this.getMultiplicity(param);
-    const label = `${param.getName() || 'unnamed'} : ${type}${multiplicity}`;
+private createAttributeNode(attr: EAttribute): TreeNode {
+    const type = attr.getEType() ? attr.getEType().getName() : "void";
+    const multiplicity = this.getMultiplicity(attr);
+    const label = `${attr.getName() || "unnamed"} : ${type}${multiplicity}`;
 
-    return {
+    const node: TreeNode = {
+      element: attr,
+      type: "EAttribute",
+      id: this.generateId(attr),
+      label: label,
+      children: [],
+      expanded: false,
+    };
+
+    // IMPORTANT: Add to nodeMap so updates can find this node
+    this.nodeMap.set(node.id, node);
+
+    return node;
+  }
+
+  private createReferenceNode(ref: EReference): TreeNode {
+    const type = ref.getEType() ? ref.getEType().getName() : "void";
+    const multiplicity = this.getMultiplicity(ref);
+    const containment = ref.isContainment() ? " [containment]" : "";
+    const label = `${ref.getName() || "unnamed"} : ${type}${multiplicity}${containment}`;
+
+    const node: TreeNode = {
+      element: ref,
+      type: "EReference",
+      id: this.generateId(ref),
+      label: label,
+      children: [],
+      expanded: false,
+    };
+
+    // IMPORTANT: Add to nodeMap so updates can find this node
+    this.nodeMap.set(node.id, node);
+
+    return node;
+  }
+
+  private createParameterNode(param: EParameter): TreeNode {
+    const type = param.getEType() ? param.getEType().getName() : "void";
+    const multiplicity = this.getMultiplicity(param);
+    const label = `${param.getName() || "unnamed"} : ${type}${multiplicity}`;
+
+    const node: TreeNode = {
       element: param,
-      type: 'EParameter',
+      type: "EParameter",
       id: this.generateId(param),
       label: label,
       children: [],
       expanded: false,
     };
+
+    // IMPORTANT: Add to nodeMap so updates can find this node
+    this.nodeMap.set(node.id, node);
+
+    return node;
+  }
+
+  // Also update createEnumNode to ensure enum literals are added to nodeMap:
+  private createEnumNode(eEnum: EEnum): TreeNode {
+    const node: TreeNode = {
+      element: eEnum,
+      type: "EEnum",
+      id: this.generateId(eEnum),
+      label: eEnum.getName() || "unnamed",
+      children: [],
+      expanded: false,
+    };
+
+    this.nodeMap.set(node.id, node);
+
+    // Add enum literals
+    const literals = eEnum.getELiterals();
+    for (let i = 0; i < literals.size(); i++) {
+      const literal = literals.get(i);
+      const literalNode: TreeNode = {
+        element: literal,
+        type: "EEnumLiteral",
+        id: this.generateId(literal),
+        label: `${literal.getName() || literal.getLiteral() || "unnamed"} = ${literal.getValue() || 0}`,
+        children: [],
+        expanded: false,
+        parent: node,
+      };
+      
+      // IMPORTANT: Add literal nodes to nodeMap too
+      this.nodeMap.set(literalNode.id, literalNode);
+      
+      node.children.push(literalNode);
+    }
+
+    return node;
   }
 
   private renderNode(
@@ -567,54 +587,103 @@ export class ModelTreeView {
   }
 
   public updateNodeLabel(element: any): void {
+    let nodeFound = false;
+    
     // Find the node for this element
     for (const [id, node] of this.nodeMap) {
       if (node.element === element) {
+        nodeFound = true;
+        
         // Update the label based on type
-        if (node.type === 'EClass') {
-          // For EClass, regenerate label with super type
+        if (node.type === "EClass") {
           node.label = this.getClassLabelWithSuperType(element);
-        } else if (node.type === 'EOperation') {
+        } else if (node.type === "EOperation") {
           node.label = this.getOperationLabel(element);
-        } else if (node.type === 'EAttribute') {
-          const type = element.getEType()
-            ? element.getEType().getName()
-            : 'void';
+        } else if (node.type === "EAttribute") {
+          const type = element.getEType() ? element.getEType().getName() : "void";
           const multiplicity = this.getMultiplicity(element);
-          node.label = `${element.getName() || 'unnamed'} : ${type}${multiplicity}`;
-        } else if (node.type === 'EReference') {
-          const type = element.getEType()
-            ? element.getEType().getName()
-            : 'void';
+          node.label = `${element.getName() || "unnamed"} : ${type}${multiplicity}`;
+        } else if (node.type === "EReference") {
+          const type = element.getEType() ? element.getEType().getName() : "void";
           const multiplicity = this.getMultiplicity(element);
-          const containment = element.isContainment
-            ? element.isContainment()
-            : false;
-          const containmentText = containment ? ' [containment]' : '';
-          node.label = `${element.getName() || 'unnamed'} : ${type}${multiplicity}${containmentText}`;
-        } else if (node.type === 'EParameter') {
-          const type = element.getEType()
-            ? element.getEType().getName()
-            : 'void';
+          const containment = element.isContainment ? element.isContainment() : false;
+          const containmentText = containment ? " [containment]" : "";
+          node.label = `${element.getName() || "unnamed"} : ${type}${multiplicity}${containmentText}`;
+        } else if (node.type === "EParameter") {
+          const type = element.getEType() ? element.getEType().getName() : "void";
           const multiplicity = this.getMultiplicity(element);
-          node.label = `${element.getName() || 'unnamed'} : ${type}${multiplicity}`;
-        } else if (node.type === 'EEnumLiteral') {
-          // For enum literals, show name and value
-          const name = element.getName ? element.getName() : 'unnamed';
+          node.label = `${element.getName() || "unnamed"} : ${type}${multiplicity}`;
+        } else if (node.type === "EEnumLiteral") {
+          const name = element.getName ? element.getName() : 
+                       element.getLiteral ? element.getLiteral() : "unnamed";
           const value = element.getValue ? element.getValue() : 0;
           node.label = `${name} = ${value}`;
         } else if (element.getName) {
           // For all other named elements (EPackage, EEnum, etc.)
-          node.label = element.getName() || 'unnamed';
+          node.label = element.getName() || "unnamed";
         }
-
-        // Don't break here - continue checking in case the same element appears multiple times
       }
     }
-
+    
+    if (!nodeFound) {
+      // Fallback: try searching through tree structure
+      this.updateNodeLabelByTreeSearch(this.rootNode, element);
+    }
+    
     // Refresh the tree display without changing selection or focus
     this.refreshWithoutFocusChange();
   }
+
+   private updateNodeLabelByTreeSearch(node: TreeNode | null, targetElement: any): boolean {
+    if (!node) return false;
+    
+    if (node.element === targetElement) {
+      console.log('Found node via tree search:', node);
+      
+      // Update the label based on the element type
+      const element = targetElement;
+      
+      if (this.isEClass(element)) {
+        node.label = this.getClassLabelWithSuperType(element);
+      } else if (this.isEOperation(element)) {
+        node.label = this.getOperationLabel(element);
+      } else if (this.isEAttribute(element)) {
+        const type = element.getEType() ? element.getEType().getName() : "void";
+        const multiplicity = this.getMultiplicity(element);
+        node.label = `${element.getName() || "unnamed"} : ${type}${multiplicity}`;
+      } else if (this.isEReference(element)) {
+        const type = element.getEType() ? element.getEType().getName() : "void";
+        const multiplicity = this.getMultiplicity(element);
+        const containment = element.isContainment ? element.isContainment() : false;
+        const containmentText = containment ? " [containment]" : "";
+        node.label = `${element.getName() || "unnamed"} : ${type}${multiplicity}${containmentText}`;
+      } else if (this.isEParameter(element)) {
+        const type = element.getEType() ? element.getEType().getName() : "void";
+        const multiplicity = this.getMultiplicity(element);
+        node.label = `${element.getName() || "unnamed"} : ${type}${multiplicity}`;
+      } else if (this.isEEnumLiteral(element)) {
+        const name = element.getName ? element.getName() : 
+                     element.getLiteral ? element.getLiteral() : "unnamed";
+        const value = element.getValue ? element.getValue() : 0;
+        node.label = `${name} = ${value}`;
+      } else if (element.getName) {
+        node.label = element.getName() || "unnamed";
+      }
+      
+      console.log('Updated label via tree search to:', node.label);
+      return true;
+    }
+    
+    // Search children
+    for (const child of node.children) {
+      if (this.updateNodeLabelByTreeSearch(child, targetElement)) {
+        return true;
+      }
+    }
+    
+    return false;
+  }
+
 
   // Add this new method to refresh without changing focus
   private refreshWithoutFocusChange(): void {
@@ -1212,10 +1281,34 @@ export class ModelTreeView {
   }
 
   private isEClass(element: any): boolean {
-    return element && element.constructor.name.includes('EClass');
+    return element && element.constructor.name.includes("EClass");
   }
 
   private isEEnum(element: any): boolean {
-    return element && element.constructor.name.includes('EEnum');
+    return element && element.constructor.name.includes("EEnum");
+  }
+
+  private isEAttribute(element: any): boolean {
+    return element && element.constructor.name.includes("EAttribute");
+  }
+
+  private isEReference(element: any): boolean {
+    return element && element.constructor.name.includes("EReference");
+  }
+
+  private isEOperation(element: any): boolean {
+    return element && element.constructor.name.includes("EOperation");
+  }
+
+  private isEParameter(element: any): boolean {
+    return element && element.constructor.name.includes("EParameter");
+  }
+
+  private isEEnumLiteral(element: any): boolean {
+    return element && element.constructor.name.includes("EEnumLiteral");
+  }
+
+  private isEPackage(element: any): boolean {
+    return element && element.constructor.name.includes("EPackage");
   }
 }
