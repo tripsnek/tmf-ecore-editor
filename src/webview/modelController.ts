@@ -29,7 +29,7 @@ export class ModelController {
   /**
    * Update a property on an element
    */
-  public updateProperty(element: any, property: string, value: any): void {
+public updateProperty(element: any, property: string, value: any): void {
     // Save state for undo
     this.saveState();
 
@@ -118,16 +118,24 @@ export class ModelController {
         break;
 
       case "eSuperTypes":
-        // Legacy support for the old multi-valued property
+        // Handle super types - can be either a single value or an array
         if (element.getESuperTypes) {
           const superTypes = element.getESuperTypes();
           superTypes.clear();
-          // Add new
-          if (value && Array.isArray(value)) {
-            value.forEach((superType: any) => {
-              superTypes.add(superType);
-            });
+          
+          // Handle both single value and array
+          if (value) {
+            if (Array.isArray(value)) {
+              // If it's an array, add all elements
+              value.forEach((superType: any) => {
+                superTypes.add(superType);
+              });
+            } else {
+              // If it's a single element, add just that one
+              superTypes.add(value);
+            }
           }
+          // If value is null or undefined, the list remains cleared
         }
         break;
 
@@ -142,6 +150,7 @@ export class ModelController {
           element.setValue(value);
         }
         break;
+        
       case "unsettable":
         if (element.setUnsettable) {
           element.setUnsettable(value);
