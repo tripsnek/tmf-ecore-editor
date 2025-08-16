@@ -2,14 +2,14 @@ interface PropertyDescriptor {
   name: string;
   label: string;
   type:
-    | "string"
-    | "boolean"
-    | "number"
-    | "enum"
-    | "reference"
-    | "multiReference"
-    | "classType"
-    | "multiplicity";
+    | 'string'
+    | 'boolean'
+    | 'number'
+    | 'enum'
+    | 'reference'
+    | 'multiReference'
+    | 'classType'
+    | 'multiplicity';
   value: any;
   options?: any[];
   readOnly?: boolean;
@@ -20,27 +20,31 @@ export class PropertiesPanel {
   private onPropertyChanged: (
     element: any,
     property: string,
-    value: any
+    value: any,
   ) => void;
   private treeView: any; // Reference to tree view for getting all classes
+  private onAddChild: (element: any, childType: string) => void; // Callback for adding children
+  private isUpdatingHeader: boolean = false; // Flag to prevent rebuilding during header updates
 
   constructor(
-    onPropertyChanged: (element: any, property: string, value: any) => void
+    onPropertyChanged: (element: any, property: string, value: any) => void,
+    onAddChild?: (element: any, childType: string) => void,
   ) {
     this.onPropertyChanged = onPropertyChanged;
+    this.onAddChild = onAddChild;
   }
 
   public setTreeView(treeView: any): void {
     this.treeView = treeView;
   }
 
-  public showProperties(element: any): void {
+  public showProperties(element: any, focusNameField: boolean = false): void {
     this.currentElement = element;
-    const container = document.getElementById("properties-container");
+    const container = document.getElementById('properties-container');
     if (!container) return;
 
     // Clear container
-    container.innerHTML = "";
+    container.innerHTML = '';
 
     if (!element) {
       this.showEmptyState(container);
@@ -56,17 +60,51 @@ export class PropertiesPanel {
     }
 
     // Create property form
-    const form = document.createElement("div");
-    form.className = "properties-form";
+    const form = document.createElement('div');
+    form.className = 'properties-form';
 
-    // Add element type header
-    const header = document.createElement("div");
-    header.className = "properties-header";
-    header.innerHTML = `
-            <i class="codicon ${this.getIconForElement(element)}"></i>
-            <span>${this.getElementTypeName(element)}</span>
-        `;
+    // Add element type header with name
+    const header = document.createElement('div');
+    header.className = 'properties-header';
+    header.id = 'properties-header'; // Add ID for easy updates
+    this.updateHeader(header, element);
     form.appendChild(header);
+
+    // Add action buttons based on element type
+    const actions = this.getActionsForElement(element);
+    if (actions.length > 0) {
+      const actionsContainer = document.createElement('div');
+      actionsContainer.className = 'properties-actions';
+      actionsContainer.style.cssText = `
+        display: flex;
+        gap: 4px;
+        padding: 8px;
+        border-bottom: 1px solid var(--vscode-panel-border);
+        flex-wrap: wrap;
+      `;
+
+      actions.forEach((action) => {
+        const button = document.createElement('button');
+        button.className = 'toolbar-btn';
+        button.title = action.label;
+        button.innerHTML = `<i class="codicon ${action.icon}"></i> ${action.label}`;
+        button.style.cssText = `
+          padding: 4px 8px;
+          font-size: 11px;
+          display: flex;
+          align-items: center;
+          gap: 4px;
+        `;
+        button.addEventListener('click', () => {
+          if (this.onAddChild) {
+            this.onAddChild(element, action.type);
+          }
+        });
+        actionsContainer.appendChild(button);
+      });
+
+      form.appendChild(actionsContainer);
+    }
 
     // Add properties
     properties.forEach((prop) => {
@@ -75,10 +113,105 @@ export class PropertiesPanel {
     });
 
     container.appendChild(form);
+
+    // Focus on name field if requested
+    if (focusNameField) {
+      setTimeout(() => {
+        const nameInput = container.querySelector(
+          'input[data-property="name"]',
+        ) as HTMLInputElement;
+        if (nameInput) {
+          nameInput.focus();
+          nameInput.select();
+        }
+      }, 50);
+    }
+  }
+
+  // New method to update just the header without rebuilding everything
+  public updateHeaderOnly(): void {
+    if (!this.currentElement || this.isUpdatingHeader) return;
+
+    const header = document.getElementById('properties-header');
+    if (header) {
+      this.updateHeader(header, this.currentElement);
+    }
+  }
+
+  private updateHeader(header: HTMLElement, element: any): void {
+    const elementName = element.getName ? element.getName() : 'unnamed';
+    const elementType = this.getElementTypeName(element);
+    header.innerHTML = `
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <i class="codicon ${this.getIconForElement(element)}"></i>
+        <span>${elementType}</span>
+        <span style="color: var(--vscode-descriptionForeground);">: ${elementName}</span>
+      </div>
+    `;
+  }
+
+  private getActionsForElement(
+    element: any,
+  ): Array<{ label: string; icon: string; type: string }> {
+    const actions = [];
+    const elementType = this.getElementTypeName(element);
+
+    switch (elementType) {
+      case 'EPackage':
+        actions.push(
+          {
+            label: 'Add Class',
+            icon: 'codicon-symbol-class',
+            type: 'addClass',
+          },
+          { label: 'Add Enum', icon: 'codicon-symbol-enum', type: 'addEnum' },
+          {
+            label: 'Add Sub-Package',
+            icon: 'codicon-package',
+            type: 'addSubPackage',
+          },
+        );
+        break;
+      case 'EClass':
+        actions.push(
+          {
+            label: 'Add Attribute',
+            icon: 'codicon-symbol-field',
+            type: 'addAttribute',
+          },
+          {
+            label: 'Add Reference',
+            icon: 'codicon-references',
+            type: 'addReference',
+          },
+          {
+            label: 'Add Operation',
+            icon: 'codicon-gear',
+            type: 'addOperation',
+          },
+        );
+        break;
+      case 'EOperation':
+        actions.push({
+          label: 'Add Parameter',
+          icon: 'codicon-symbol-parameter',
+          type: 'addParameter',
+        });
+        break;
+      case 'EEnum':
+        actions.push({
+          label: 'Add Literal',
+          icon: 'codicon-symbol-constant',
+          type: 'addLiteral',
+        });
+        break;
+    }
+
+    return actions;
   }
 
   public clear(): void {
-    const container = document.getElementById("properties-container");
+    const container = document.getElementById('properties-container');
     if (container) {
       this.showEmptyState(container);
     }
@@ -95,36 +228,36 @@ export class PropertiesPanel {
   }
 
   private createPropertyField(prop: PropertyDescriptor): HTMLElement {
-    const field = document.createElement("div");
-    field.className = "property-field";
+    const field = document.createElement('div');
+    field.className = 'property-field';
 
-    const label = document.createElement("label");
-    label.className = "property-label";
+    const label = document.createElement('label');
+    label.className = 'property-label';
     label.textContent = prop.label;
     field.appendChild(label);
 
     let input: HTMLElement;
 
     switch (prop.type) {
-      case "boolean":
+      case 'boolean':
         input = this.createBooleanInput(prop);
         break;
-      case "enum":
+      case 'enum':
         input = this.createEnumInput(prop);
         break;
-      case "reference":
+      case 'reference':
         input = this.createReferenceInput(prop);
         break;
-      case "multiReference":
+      case 'multiReference':
         input = this.createMultiReferenceInput(prop);
         break;
-      case "number":
+      case 'number':
         input = this.createNumberInput(prop);
         break;
-      case "classType":
+      case 'classType':
         input = this.createClassTypeInput(prop);
         break;
-      case "multiplicity":
+      case 'multiplicity':
         input = this.createMultiplicityInput(prop);
         break;
       default:
@@ -136,47 +269,65 @@ export class PropertiesPanel {
   }
 
   private createTextInput(prop: PropertyDescriptor): HTMLElement {
-    const input = document.createElement("input");
-    input.type = "text";
-    input.className = "property-input";
-    input.value = prop.value || "";
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.className = 'property-input';
+    input.value = prop.value || '';
     input.disabled = prop.readOnly || false;
+    input.setAttribute('data-property', prop.name);
 
-    input.addEventListener("change", () => {
+    // Use input event for real-time updates
+    input.addEventListener('input', () => {
+      // Update property without rebuilding the properties panel
+      this.isUpdatingHeader = true;
       this.onPropertyChanged(this.currentElement, prop.name, input.value);
+
+      // Update the header if it's a name change
+      if (prop.name === 'name') {
+        this.updateHeaderOnly();
+      }
+
+      this.isUpdatingHeader = false;
     });
 
     return input;
   }
 
   private createNumberInput(prop: PropertyDescriptor): HTMLElement {
-    const input = document.createElement("input");
-    input.type = "number";
-    input.className = "property-input";
-    input.value = prop.value !== undefined ? prop.value.toString() : "";
+    const input = document.createElement('input');
+    input.type = 'number';
+    input.className = 'property-input';
+    input.value = prop.value !== undefined ? prop.value.toString() : '';
     input.disabled = prop.readOnly || false;
+    input.setAttribute('data-property', prop.name);
 
-    input.addEventListener("change", () => {
+    // Use input event for real-time updates
+    input.addEventListener('input', () => {
       const value = input.value ? parseInt(input.value) : undefined;
+      this.isUpdatingHeader = true;
       this.onPropertyChanged(this.currentElement, prop.name, value);
+      this.isUpdatingHeader = false;
     });
 
     return input;
   }
 
   private createBooleanInput(prop: PropertyDescriptor): HTMLElement {
-    const container = document.createElement("div");
-    container.className = "checkbox-container";
+    const container = document.createElement('div');
+    container.className = 'checkbox-container';
 
-    const input = document.createElement("input");
-    input.type = "checkbox";
-    input.className = "property-checkbox";
-    // Fix: Ensure boolean value is properly checked
-    input.checked = prop.value === true || prop.value === "true";
+    const input = document.createElement('input');
+    input.type = 'checkbox';
+    input.className = 'property-checkbox';
+    input.checked = prop.value === true || prop.value === 'true';
     input.disabled = prop.readOnly || false;
+    input.setAttribute('data-property', prop.name);
 
-    input.addEventListener("change", () => {
+    // Use change event for immediate updates
+    input.addEventListener('change', () => {
+      this.isUpdatingHeader = true;
       this.onPropertyChanged(this.currentElement, prop.name, input.checked);
+      this.isUpdatingHeader = false;
     });
 
     container.appendChild(input);
@@ -184,20 +335,21 @@ export class PropertiesPanel {
   }
 
   private createEnumInput(prop: PropertyDescriptor): HTMLElement {
-    const select = document.createElement("select");
-    select.className = "property-select";
+    const select = document.createElement('select');
+    select.className = 'property-select';
     select.disabled = prop.readOnly || false;
+    select.setAttribute('data-property', prop.name);
 
     // Add empty option
-    const emptyOption = document.createElement("option");
-    emptyOption.value = "";
-    emptyOption.textContent = "(none)";
+    const emptyOption = document.createElement('option');
+    emptyOption.value = '';
+    emptyOption.textContent = '(none)';
     select.appendChild(emptyOption);
 
     // Add options
     if (prop.options) {
       prop.options.forEach((option) => {
-        const optionElement = document.createElement("option");
+        const optionElement = document.createElement('option');
         optionElement.value = option.value || option;
         optionElement.textContent = option.label || option;
         if (prop.value === option.value || prop.value === option) {
@@ -207,31 +359,35 @@ export class PropertiesPanel {
       });
     }
 
-    select.addEventListener("change", () => {
+    // Use change event for immediate updates
+    select.addEventListener('change', () => {
+      this.isUpdatingHeader = true;
       this.onPropertyChanged(
         this.currentElement,
         prop.name,
-        select.value || null
+        select.value || null,
       );
+      this.isUpdatingHeader = false;
     });
 
     return select;
   }
 
   private createClassTypeInput(prop: PropertyDescriptor): HTMLElement {
-    const select = document.createElement("select");
-    select.className = "property-select";
+    const select = document.createElement('select');
+    select.className = 'property-select';
     select.disabled = prop.readOnly || false;
+    select.setAttribute('data-property', prop.name);
 
     // Add options for class type (Concrete/Abstract/Interface)
     const options = [
-      { value: "concrete", label: "Concrete" },
-      { value: "abstract", label: "Abstract" },
-      { value: "interface", label: "Interface" }
+      { value: 'concrete', label: 'Concrete' },
+      { value: 'abstract', label: 'Abstract' },
+      { value: 'interface', label: 'Interface' },
     ];
 
     options.forEach((option) => {
-      const optionElement = document.createElement("option");
+      const optionElement = document.createElement('option');
       optionElement.value = option.value;
       optionElement.textContent = option.label;
       if (prop.value === option.value) {
@@ -240,44 +396,51 @@ export class PropertiesPanel {
       select.appendChild(optionElement);
     });
 
-    select.addEventListener("change", () => {
+    select.addEventListener('change', () => {
       const selectedValue = select.value;
-      
+
+      this.isUpdatingHeader = true;
+
       // Update both abstract and interface properties based on selection
       switch (selectedValue) {
-        case "concrete":
-          this.onPropertyChanged(this.currentElement, "abstract", false);
-          this.onPropertyChanged(this.currentElement, "interface", false);
+        case 'concrete':
+          this.onPropertyChanged(this.currentElement, 'abstract', false);
+          this.onPropertyChanged(this.currentElement, 'interface', false);
           break;
-        case "abstract":
-          this.onPropertyChanged(this.currentElement, "abstract", true);
-          this.onPropertyChanged(this.currentElement, "interface", false);
+        case 'abstract':
+          this.onPropertyChanged(this.currentElement, 'abstract', true);
+          this.onPropertyChanged(this.currentElement, 'interface', false);
           break;
-        case "interface":
-          this.onPropertyChanged(this.currentElement, "abstract", false);
-          this.onPropertyChanged(this.currentElement, "interface", true);
+        case 'interface':
+          this.onPropertyChanged(this.currentElement, 'abstract', false);
+          this.onPropertyChanged(this.currentElement, 'interface', true);
           break;
       }
+
+      this.isUpdatingHeader = false;
     });
 
     return select;
   }
 
   private createMultiplicityInput(prop: PropertyDescriptor): HTMLElement {
-    const container = document.createElement("div");
-    container.className = "checkbox-container";
+    const container = document.createElement('div');
+    container.className = 'checkbox-container';
 
-    const input = document.createElement("input");
-    input.type = "checkbox";
-    input.className = "property-checkbox";
+    const input = document.createElement('input');
+    input.type = 'checkbox';
+    input.className = 'property-checkbox';
     input.checked = prop.value === true; // true = many-valued, false = single-valued
     input.disabled = prop.readOnly || false;
+    input.setAttribute('data-property', prop.name);
 
-    input.addEventListener("change", () => {
+    input.addEventListener('change', () => {
       // Update the upper bound based on checkbox state
       // Many-valued = -1, Single-valued = 1
       const upperBound = input.checked ? -1 : 1;
-      this.onPropertyChanged(this.currentElement, "upperBound", upperBound);
+      this.isUpdatingHeader = true;
+      this.onPropertyChanged(this.currentElement, 'upperBound', upperBound);
+      this.isUpdatingHeader = false;
     });
 
     container.appendChild(input);
@@ -285,23 +448,24 @@ export class PropertiesPanel {
   }
 
   private createReferenceInput(prop: PropertyDescriptor): HTMLElement {
-    const container = document.createElement("div");
-    container.className = "reference-container";
+    const container = document.createElement('div');
+    container.className = 'reference-container';
 
-    const select = document.createElement("select");
-    select.className = "property-select";
+    const select = document.createElement('select');
+    select.className = 'property-select';
     select.disabled = prop.readOnly || false;
+    select.setAttribute('data-property', prop.name);
 
     // Add empty option
-    const emptyOption = document.createElement("option");
-    emptyOption.value = "";
-    emptyOption.textContent = "(none)";
+    const emptyOption = document.createElement('option');
+    emptyOption.value = '';
+    emptyOption.textContent = '(none)';
     select.appendChild(emptyOption);
 
     // Add available references
     if (prop.options) {
       prop.options.forEach((option) => {
-        const optionElement = document.createElement("option");
+        const optionElement = document.createElement('option');
         optionElement.value = option.id;
         optionElement.textContent = option.label;
         // Fix: Check if current value matches the option
@@ -319,13 +483,15 @@ export class PropertiesPanel {
       });
     }
 
-    select.addEventListener("change", () => {
+    select.addEventListener('change', () => {
       const selectedOption = prop.options?.find((o) => o.id === select.value);
+      this.isUpdatingHeader = true;
       this.onPropertyChanged(
         this.currentElement,
         prop.name,
-        selectedOption ? selectedOption.element : null
+        selectedOption ? selectedOption.element : null,
       );
+      this.isUpdatingHeader = false;
     });
 
     container.appendChild(select);
@@ -333,28 +499,28 @@ export class PropertiesPanel {
   }
 
   private createMultiReferenceInput(prop: PropertyDescriptor): HTMLElement {
-    const container = document.createElement("div");
-    container.className = "multi-reference-container";
+    const container = document.createElement('div');
+    container.className = 'multi-reference-container';
 
     // Current values list
-    const currentList = document.createElement("div");
-    currentList.className = "reference-list";
+    const currentList = document.createElement('div');
+    currentList.className = 'reference-list';
 
     if (prop.value && Array.isArray(prop.value)) {
       prop.value.forEach((item: any) => {
-        const itemElement = document.createElement("div");
-        itemElement.className = "reference-item";
+        const itemElement = document.createElement('div');
+        itemElement.className = 'reference-item';
         itemElement.innerHTML = `
-                    <span>${item.label || item.getName() || "unnamed"}</span>
+                    <span>${item.label || item.getName() || 'unnamed'}</span>
                     <button class="remove-btn" title="Remove">
                         <i class="codicon codicon-close"></i>
                     </button>
                 `;
 
         const removeBtn = itemElement.querySelector(
-          ".remove-btn"
+          '.remove-btn',
         ) as HTMLElement;
-        removeBtn.addEventListener("click", () => {
+        removeBtn.addEventListener('click', () => {
           const newValue = prop.value.filter((v: any) => v !== item);
           this.onPropertyChanged(this.currentElement, prop.name, newValue);
           this.showProperties(this.currentElement); // Refresh
@@ -367,22 +533,22 @@ export class PropertiesPanel {
     container.appendChild(currentList);
 
     // Add button
-    const addContainer = document.createElement("div");
-    addContainer.className = "add-reference-container";
+    const addContainer = document.createElement('div');
+    addContainer.className = 'add-reference-container';
 
-    const select = document.createElement("select");
-    select.className = "property-select";
+    const select = document.createElement('select');
+    select.className = 'property-select';
 
-    const emptyOption = document.createElement("option");
-    emptyOption.value = "";
-    emptyOption.textContent = "Select to add...";
+    const emptyOption = document.createElement('option');
+    emptyOption.value = '';
+    emptyOption.textContent = 'Select to add...';
     select.appendChild(emptyOption);
 
     if (prop.options) {
       prop.options.forEach((option) => {
         // Only show options not already selected
         if (!prop.value || !prop.value.some((v: any) => v === option.element)) {
-          const optionElement = document.createElement("option");
+          const optionElement = document.createElement('option');
           optionElement.value = option.id;
           optionElement.textContent = option.label;
           select.appendChild(optionElement);
@@ -390,10 +556,10 @@ export class PropertiesPanel {
       });
     }
 
-    const addBtn = document.createElement("button");
-    addBtn.className = "add-btn";
+    const addBtn = document.createElement('button');
+    addBtn.className = 'add-btn';
     addBtn.innerHTML = '<i class="codicon codicon-add"></i> Add';
-    addBtn.addEventListener("click", () => {
+    addBtn.addEventListener('click', () => {
       if (select.value) {
         const selectedOption = prop.options?.find((o) => o.id === select.value);
         if (selectedOption) {
@@ -411,15 +577,20 @@ export class PropertiesPanel {
     return container;
   }
 
+  // Getter to check if we're updating the header
+  public get isUpdating(): boolean {
+    return this.isUpdatingHeader;
+  }
+
   private getPropertiesForElement(element: any): PropertyDescriptor[] {
     const properties: PropertyDescriptor[] = [];
 
     // Common properties for named elements
     if (element.getName) {
       properties.push({
-        name: "name",
-        label: "Name",
-        type: "string",
+        name: 'name',
+        label: 'Name',
+        type: 'string',
         value: element.getName(),
       });
     }
@@ -428,44 +599,44 @@ export class PropertiesPanel {
     if (this.isEPackage(element)) {
       properties.push(
         {
-          name: "nsURI",
-          label: "Namespace URI",
-          type: "string",
-          value: element.getNsURI ? element.getNsURI() : "",
+          name: 'nsURI',
+          label: 'Namespace URI',
+          type: 'string',
+          value: element.getNsURI ? element.getNsURI() : '',
         },
         {
-          name: "nsPrefix",
-          label: "Namespace Prefix",
-          type: "string",
-          value: element.getNsPrefix ? element.getNsPrefix() : "",
-        }
+          name: 'nsPrefix',
+          label: 'Namespace Prefix',
+          type: 'string',
+          value: element.getNsPrefix ? element.getNsPrefix() : '',
+        },
       );
     } else if (this.isEClass(element)) {
       // Determine current class type based on abstract and interface values
       const isAbstract = element.isAbstract ? element.isAbstract() : false;
       const isInterface = element.isInterface ? element.isInterface() : false;
-      
-      let classType = "concrete";
+
+      let classType = 'concrete';
       if (isAbstract && !isInterface) {
-        classType = "abstract";
+        classType = 'abstract';
       } else if (!isAbstract && isInterface) {
-        classType = "interface";
+        classType = 'interface';
       }
 
       properties.push(
         {
-          name: "classType",
-          label: "Class Type",
-          type: "classType",
+          name: 'classType',
+          label: 'Class Type',
+          type: 'classType',
           value: classType,
         },
         {
-          name: "eSuperTypes",
-          label: "Super Type",
-          type: "reference",
+          name: 'eSuperTypes',
+          label: 'Super Type',
+          type: 'reference',
           value: this.getSuperType(element),
           options: this.getAvailableClasses(element),
-        }
+        },
       );
     } else if (this.isEAttribute(element)) {
       // Get current type for EAttribute
@@ -475,42 +646,36 @@ export class PropertiesPanel {
 
       properties.push(
         {
-          name: "eType",
-          label: "Type",
-          type: "reference",
+          name: 'eType',
+          label: 'Type',
+          type: 'reference',
           value: currentType,
           options: this.getAvailableDataTypes(currentType),
         },
-        // {
-        //   name: "lowerBound",
-        //   label: "Lower Bound",
-        //   type: "number",
-        //   value: lowerBound,
-        // },
         {
-          name: "multiplicity",
-          label: "Many-valued",
-          type: "multiplicity",
+          name: 'multiplicity',
+          label: 'Many-valued',
+          type: 'multiplicity',
           value: upperBound === -1, // true if many-valued, false if single-valued
         },
         {
-          name: "id",
-          label: "Is ID",
-          type: "boolean",
+          name: 'id',
+          label: 'Is ID',
+          type: 'boolean',
           value: element.isId ? element.isId() : false,
         },
         {
-          name: "volatile",
-          label: "Volatile",
-          type: "boolean",
+          name: 'volatile',
+          label: 'Volatile',
+          type: 'boolean',
           value: element.isVolatile ? element.isVolatile() : false,
         },
         {
-          name: "transient",
-          label: "Transient",
-          type: "boolean",
+          name: 'transient',
+          label: 'Transient',
+          type: 'boolean',
           value: element.isTransient ? element.isTransient() : false,
-        }
+        },
       );
     } else if (this.isEReference(element)) {
       // Get current type for EReference
@@ -520,110 +685,100 @@ export class PropertiesPanel {
 
       properties.push(
         {
-          name: "eType",
-          label: "Type",
-          type: "reference",
+          name: 'eType',
+          label: 'Type',
+          type: 'reference',
           value: currentType,
           options: this.getAvailableClasses(null, currentType),
         },
-        // {
-        //   name: "lowerBound",
-        //   label: "Lower Bound",
-        //   type: "number",
-        //   value: lowerBound,
-        // },
         {
-          name: "multiplicity",
-          label: "Many-valued",
-          type: "multiplicity",
+          name: 'multiplicity',
+          label: 'Many-valued',
+          type: 'multiplicity',
           value: upperBound === -1, // true if many-valued, false if single-valued
         },
         {
-          name: "containment",
-          label: "Containment",
-          type: "boolean",
+          name: 'containment',
+          label: 'Containment',
+          type: 'boolean',
           value: element.isContainment ? element.isContainment() : false,
         },
         {
-          name: "eOpposite",
-          label: "Opposite",
-          type: "reference",
+          name: 'eOpposite',
+          label: 'Opposite',
+          type: 'reference',
           value: element.getEOpposite ? element.getEOpposite() : null,
           options: this.getAvailableReferences(element),
         },
         {
-          name: "volatile",
-          label: "Volatile",
-          type: "boolean",
+          name: 'volatile',
+          label: 'Volatile',
+          type: 'boolean',
           value: element.isVolatile ? element.isVolatile() : false,
         },
         {
-          name: "transient",
-          label: "Transient",
-          type: "boolean",
+          name: 'transient',
+          label: 'Transient',
+          type: 'boolean',
           value: element.isTransient ? element.isTransient() : false,
-        }
+        },
       );
     } else if (this.isEOperation(element)) {
-      const upperBound = element.getUpperBound();
-      properties.push({
-        name: "eType",
-        label: "Return Type",
-        type: "reference",
-        value: element.getEType ? element.getEType() : null,
-        options: [
-          ...this.getAvailableDataTypes(),
-          ...this.getAvailableClasses(),
-        ],
-      },
-      {
-          name: "multiplicity",
-          label: "Many-valued (Return Type)",
-          type: "multiplicity",
-          value: upperBound === -1, // true if many-valued, false if single-valued
-        });
-    } else if (this.isEParameter(element)) {
       const upperBound = element.getUpperBound ? element.getUpperBound() : 1;
-      const lowerBound = element.getLowerBound ? element.getLowerBound() : 0;
-
       properties.push(
         {
-          name: "eType",
-          label: "Type",
-          type: "reference",
+          name: 'eType',
+          label: 'Return Type',
+          type: 'reference',
           value: element.getEType ? element.getEType() : null,
           options: [
             ...this.getAvailableDataTypes(),
             ...this.getAvailableClasses(),
           ],
         },
-        // {
-        //   name: "lowerBound",
-        //   label: "Lower Bound",
-        //   type: "number",
-        //   value: lowerBound,
-        // },
         {
-          name: "multiplicity",
-          label: "Many-valued",
-          type: "multiplicity",
+          name: 'multiplicity',
+          label: 'Many-valued (Return Type)',
+          type: 'multiplicity',
           value: upperBound === -1, // true if many-valued, false if single-valued
-        }
+        },
+      );
+    } else if (this.isEParameter(element)) {
+      const upperBound = element.getUpperBound ? element.getUpperBound() : 1;
+      const lowerBound = element.getLowerBound ? element.getLowerBound() : 0;
+
+      properties.push(
+        {
+          name: 'eType',
+          label: 'Type',
+          type: 'reference',
+          value: element.getEType ? element.getEType() : null,
+          options: [
+            ...this.getAvailableDataTypes(),
+            ...this.getAvailableClasses(),
+          ],
+        },
+        {
+          name: 'multiplicity',
+          label: 'Many-valued',
+          type: 'multiplicity',
+          value: upperBound === -1, // true if many-valued, false if single-valued
+        },
       );
     } else if (this.isEEnumLiteral(element)) {
       properties.push(
         {
-          name: "literal",
-          label: "Literal",
-          type: "string",
-          value: element.getLiteral ? element.getLiteral() : "",
+          name: 'literal',
+          label: 'Literal',
+          type: 'string',
+          value: element.getLiteral ? element.getLiteral() : '',
         },
         {
-          name: "value",
-          label: "Value",
-          type: "number",
+          name: 'value',
+          label: 'Value',
+          type: 'number',
           value: element.getValue ? element.getValue() : 0,
-        }
+        },
       );
     }
 
@@ -648,7 +803,7 @@ export class PropertiesPanel {
       const id = `class_${Math.random().toString(36).substr(2, 9)}`;
       options.push({
         id: id,
-        label: eClass.getName() || "unnamed",
+        label: eClass.getName() || 'unnamed',
         element: eClass,
       });
     }
@@ -660,20 +815,20 @@ export class PropertiesPanel {
     // Create Ecore primitive data types
     const primitiveTypes = [
       {
-        name: "EString",
-        uri: "http://www.eclipse.org/emf/2002/Ecore#//EString",
+        name: 'EString',
+        uri: 'http://www.eclipse.org/emf/2002/Ecore#//EString',
       },
-      { name: "EInt", uri: "http://www.eclipse.org/emf/2002/Ecore#//EInt" },
+      { name: 'EInt', uri: 'http://www.eclipse.org/emf/2002/Ecore#//EInt' },
       {
-        name: "EBoolean",
-        uri: "http://www.eclipse.org/emf/2002/Ecore#//EBoolean",
+        name: 'EBoolean',
+        uri: 'http://www.eclipse.org/emf/2002/Ecore#//EBoolean',
       },
       {
-        name: "EDouble",
-        uri: "http://www.eclipse.org/emf/2002/Ecore#//EDouble",
+        name: 'EDouble',
+        uri: 'http://www.eclipse.org/emf/2002/Ecore#//EDouble',
       },
-      { name: "EFloat", uri: "http://www.eclipse.org/emf/2002/Ecore#//EFloat" },
-      { name: "EDate", uri: "http://www.eclipse.org/emf/2002/Ecore#//EDate" },
+      { name: 'EFloat', uri: 'http://www.eclipse.org/emf/2002/Ecore#//EFloat' },
+      { name: 'EDate', uri: 'http://www.eclipse.org/emf/2002/Ecore#//EDate' },
     ];
 
     return primitiveTypes.map((type) => {
@@ -742,50 +897,50 @@ export class PropertiesPanel {
 
   private getElementTypeName(element: any): string {
     const className = element.constructor.name;
-    return className.replace(/Impl$/, "");
+    return className.replace(/Impl$/, '');
   }
 
   private getIconForElement(element: any): string {
     const typeName = this.getElementTypeName(element);
     const icons: { [key: string]: string } = {
-      EPackage: "codicon-folder",
-      EClass: "codicon-symbol-class",
-      EEnum: "codicon-symbol-enum",
-      EAttribute: "codicon-symbol-field",
-      EReference: "codicon-references",
-      EOperation: "codicon-symbol-method",
-      EParameter: "codicon-symbol-parameter",
-      EEnumLiteral: "codicon-symbol-constant",
+      EPackage: 'codicon-folder',
+      EClass: 'codicon-symbol-class',
+      EEnum: 'codicon-symbol-enum',
+      EAttribute: 'codicon-symbol-field',
+      EReference: 'codicon-references',
+      EOperation: 'codicon-symbol-method',
+      EParameter: 'codicon-symbol-parameter',
+      EEnumLiteral: 'codicon-symbol-constant',
     };
-    return icons[typeName] || "codicon-circle-outline";
+    return icons[typeName] || 'codicon-circle-outline';
   }
 
   // Type checking helpers
   private isEPackage(element: any): boolean {
-    return element && element.constructor.name.includes("Package");
+    return element && element.constructor.name.includes('Package');
   }
 
   private isEClass(element: any): boolean {
-    return element && element.constructor.name.includes("EClass");
+    return element && element.constructor.name.includes('EClass');
   }
 
   private isEAttribute(element: any): boolean {
-    return element && element.constructor.name.includes("EAttribute");
+    return element && element.constructor.name.includes('EAttribute');
   }
 
   private isEReference(element: any): boolean {
-    return element && element.constructor.name.includes("EReference");
+    return element && element.constructor.name.includes('EReference');
   }
 
   private isEOperation(element: any): boolean {
-    return element && element.constructor.name.includes("EOperation");
+    return element && element.constructor.name.includes('EOperation');
   }
 
   private isEParameter(element: any): boolean {
-    return element && element.constructor.name.includes("EParameter");
+    return element && element.constructor.name.includes('EParameter');
   }
 
   private isEEnumLiteral(element: any): boolean {
-    return element && element.constructor.name.includes("EEnumLiteral");
+    return element && element.constructor.name.includes('EEnumLiteral');
   }
 }

@@ -666,3 +666,196 @@ body {
 .codicon-modifier-spin {
     animation: spin 1s linear infinite;
 }
+
+/* Add these styles to your existing CSS file */
+
+/* Properties Panel Header with Name */
+.properties-header {
+    padding: 12px;
+    border-bottom: 1px solid var(--vscode-panel-border);
+    font-weight: 500;
+    background: var(--vscode-sideBar-background);
+}
+
+.properties-header span {
+    margin-left: 4px;
+}
+
+/* Properties Actions Container */
+.properties-actions {
+    display: flex;
+    gap: 4px;
+    padding: 8px;
+    border-bottom: 1px solid var(--vscode-panel-border);
+    flex-wrap: wrap;
+    background: var(--vscode-editor-background);
+}
+
+.properties-actions .toolbar-btn {
+    padding: 4px 8px;
+    font-size: 11px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    background: var(--vscode-button-secondaryBackground);
+    color: var(--vscode-button-secondaryForeground);
+    border: 1px solid var(--vscode-button-border, transparent);
+    border-radius: 2px;
+    cursor: pointer;
+    transition: background-color 0.1s;
+}
+
+.properties-actions .toolbar-btn:hover {
+    background: var(--vscode-button-secondaryHoverBackground);
+}
+
+.properties-actions .toolbar-btn:active {
+    transform: translateY(1px);
+}
+
+.properties-actions .toolbar-btn i {
+    font-size: 12px;
+}
+
+/* Focused input field */
+.property-input:focus,
+.property-select:focus {
+    outline: 1px solid var(--vscode-focusBorder);
+    outline-offset: -1px;
+}
+
+/* Ensure text is selected when focused */
+.property-input[data-property="name"]:focus {
+    background-color: var(--vscode-editor-selectionBackground);
+}
+
+/* Animation for new elements */
+@keyframes highlight-new {
+    0% {
+        background-color: var(--vscode-editor-selectionBackground);
+    }
+    100% {
+        background-color: transparent;
+    }
+}
+
+.tree-node-content.newly-added {
+    animation: highlight-new 1s ease-out;
+}
+
+/* Improved property field spacing */
+.property-field {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--vscode-widget-border);
+}
+
+.property-field:last-child {
+    border-bottom: none;
+}
+
+.property-label {
+    font-size: 11px;
+    color: var(--vscode-descriptionForeground);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.property-input,
+.property-select {
+    padding: 4px 6px;
+    background: var(--vscode-input-background);
+    color: var(--vscode-input-foreground);
+    border: 1px solid var(--vscode-input-border);
+    border-radius: 2px;
+    font-size: 13px;
+    font-family: var(--vscode-font-family);
+}
+
+/* Real-time update visual feedback */
+.property-input:focus,
+.property-select:focus {
+    box-shadow: 0 0 0 1px var(--vscode-focusBorder);
+}
+
+.property-input.updating {
+    border-color: var(--vscode-progressBar-background);
+}
+
+/* Checkbox styling */
+.checkbox-container {
+    display: flex;
+    align-items: center;
+    height: 24px;
+}
+
+.property-checkbox {
+    width: 16px;
+    height: 16px;
+    cursor: pointer;
+}
+
+/* Multi-reference styling */
+.multi-reference-container {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.reference-list {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    max-height: 120px;
+    overflow-y: auto;
+}
+
+.reference-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 4px 6px;
+    background: var(--vscode-list-hoverBackground);
+    border-radius: 2px;
+    font-size: 12px;
+}
+
+.reference-item .remove-btn {
+    background: transparent;
+    border: none;
+    color: var(--vscode-icon-foreground);
+    cursor: pointer;
+    padding: 2px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.reference-item .remove-btn:hover {
+    color: var(--vscode-errorForeground);
+}
+
+.add-reference-container {
+    display: flex;
+    gap: 4px;
+}
+
+.add-btn {
+    padding: 4px 8px;
+    background: var(--vscode-button-background);
+    color: var(--vscode-button-foreground);
+    border: none;
+    border-radius: 2px;
+    cursor: pointer;
+    font-size: 11px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    white-space: nowrap;
+}
+
+.add-btn:hover {
+    background: var(--vscode-button-hoverBackground);
+}
