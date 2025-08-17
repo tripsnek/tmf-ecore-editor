@@ -432,7 +432,7 @@ export class ModelTreeView {
         element: literal,
         type: "EEnumLiteral",
         id: this.generateId(literal),
-        label: `${literal.getName() || literal.getLiteral() || "unnamed"} = ${literal.getValue() || 0}`,
+        label: `${literal.getName() || literal.getLiteral() || "unnamed"}`,
         children: [],
         expanded: false,
         parent: node,

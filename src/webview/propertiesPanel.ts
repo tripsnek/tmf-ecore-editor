@@ -770,18 +770,18 @@ export class PropertiesPanel {
       );
     } else if (EUtils.isEEnumLiteral(element)) {
       properties.push(
-        {
-          name: 'literal',
-          label: 'Literal',
-          type: 'string',
-          value: element.getLiteral ? element.getLiteral() : '',
-        },
-        {
-          name: 'value',
-          label: 'Value',
-          type: 'number',
-          value: element.getValue ? element.getValue() : 0,
-        },
+        // {
+        //   name: 'literal',
+        //   label: 'Literal',
+        //   type: 'string',
+        //   value: element.getLiteral ? element.getLiteral() : '',
+        // },
+        // {
+        //   name: 'value',
+        //   label: 'Value',
+        //   type: 'number',
+        //   value: element.getValue ? element.getValue() : 0,
+        // },
       );
     }
 
