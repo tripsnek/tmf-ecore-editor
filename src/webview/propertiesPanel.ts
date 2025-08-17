@@ -146,7 +146,7 @@ export class PropertiesPanel {
     const elementType = this.getElementTypeName(element);
     header.innerHTML = `
       <div style="display: flex; align-items: center; gap: 8px;">
-        <i class="codicon ${EUtils.getIconForType(element)}"></i>
+        <i class="codicon ${EUtils.getIconForType(elementType)}"></i>
         <span>${elementType}</span>
         <span style="color: var(--vscode-descriptionForeground);">: ${elementName}</span>
       </div>
