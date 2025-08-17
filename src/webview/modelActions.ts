@@ -617,7 +617,9 @@ export class ModelActions {
               if (oldOpposite.setEOpposite) {
                 oldOpposite.setEOpposite(null);
               }
-              ref.setEOpposite(null);
+              if (ref.setEOpposite) {
+                ref.setEOpposite(null);
+              }
             }
           }
           

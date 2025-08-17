@@ -313,31 +313,49 @@ export class PropertiesPanel {
     input.type = 'checkbox';
     input.className = 'property-checkbox';
     input.checked = prop.value === true || prop.value === 'true';
-    input.disabled = prop.readOnly || false;
     input.setAttribute('data-property', prop.name);
 
-    // Use change event for immediate updates
-    input.addEventListener('change', () => {
-      this.isUpdatingHeader = true;
+    let disabledReason = '';
+    
+    // Check if this checkbox should be disabled based on constraints
+    if (prop.name === 'containment' && !input.checked && EUtils.isEReference(this.currentElement)) {
+      const ref = this.currentElement;
+      const opposite = ref.getEOpposite ? ref.getEOpposite() : null;
       
-      // Special validation for containment property (Rule #6)
-      if (prop.name === 'containment' && input.checked && EUtils.isEReference(this.currentElement)) {
-        const ref = this.currentElement;
-        const opposite = ref.getEOpposite ? ref.getEOpposite() : null;
-        
-        if (opposite && opposite.isContainment && opposite.isContainment()) {
-          alert("Cannot set containment: opposite reference is already a containment");
-          input.checked = false;
-          this.isUpdatingHeader = false;
-          return;
-        }
+      if (opposite && opposite.isContainment && opposite.isContainment()) {
+        input.disabled = true;
+        disabledReason = 'Cannot enable: opposite is already containment';
       }
-      
-      this.onPropertyChanged(this.currentElement, prop.name, input.checked);
-      this.isUpdatingHeader = false;
-    });
+    }
+    
+    // Set readonly if specified
+    if (prop.readOnly) {
+      input.disabled = true;
+      if (prop.name === 'containment') {
+        disabledReason = 'Cannot enable: opposite is already containment';
+      }
+    }
+
+    // Use change event for immediate updates
+    if (!input.disabled) {
+      input.addEventListener('change', () => {
+        this.isUpdatingHeader = true;
+        this.onPropertyChanged(this.currentElement, prop.name, input.checked);
+        this.isUpdatingHeader = false;
+      });
+    }
 
     container.appendChild(input);
+    
+    // Add disabled reason message if needed
+    if (disabledReason) {
+      const helpText = document.createElement('span');
+      helpText.className = 'property-help-text';
+      helpText.style.cssText = 'color: var(--vscode-descriptionForeground); font-size: 11px; margin-left: 8px;';
+      helpText.textContent = disabledReason;
+      container.appendChild(helpText);
+    }
+    
     return container;
   }
 
@@ -435,6 +453,11 @@ export class PropertiesPanel {
       }
 
       this.isUpdatingHeader = false;
+      
+      // Refresh the properties panel to update the action buttons
+      setTimeout(() => {
+        this.showProperties(this.currentElement);
+      }, 50);
     });
 
     return select;
@@ -448,34 +471,51 @@ export class PropertiesPanel {
     input.type = 'checkbox';
     input.className = 'property-checkbox';
     input.checked = prop.value === true; // true = many-valued, false = single-valued
-    input.disabled = prop.readOnly || false;
     input.setAttribute('data-property', prop.name);
 
-    input.addEventListener('change', () => {
-      // Special validation for many-to-many relationships (Rule #7)
-      if (input.checked && EUtils.isEReference(this.currentElement)) {
-        const ref = this.currentElement;
-        const opposite = ref.getEOpposite ? ref.getEOpposite() : null;
-        
-        if (opposite) {
-          const oppUpperBound = opposite.getUpperBound ? opposite.getUpperBound() : 1;
-          if (oppUpperBound === -1) {
-            alert("Cannot create many-to-many opposite relationships");
-            input.checked = false;
-            return;
-          }
+    let disabledReason = '';
+    
+    // Check if this checkbox should be disabled based on constraints
+    if (!input.checked && EUtils.isEReference(this.currentElement)) {
+      const ref = this.currentElement;
+      const opposite = ref.getEOpposite ? ref.getEOpposite() : null;
+      
+      if (opposite) {
+        const oppUpperBound = opposite.getUpperBound ? opposite.getUpperBound() : 1;
+        if (oppUpperBound === -1) {
+          input.disabled = true;
+          disabledReason = 'Cannot enable: would create many-to-many relationship, which does not support eOpposites.';
         }
       }
-      
-      // Update the upper bound based on checkbox state
-      // Many-valued = -1, Single-valued = 1
-      const upperBound = input.checked ? -1 : 1;
-      this.isUpdatingHeader = true;
-      this.onPropertyChanged(this.currentElement, 'upperBound', upperBound);
-      this.isUpdatingHeader = false;
-    });
+    }
+    
+    // Set readonly if specified
+    if (prop.readOnly) {
+      input.disabled = true;
+    }
+
+    if (!input.disabled) {
+      input.addEventListener('change', () => {
+        // Update the upper bound based on checkbox state
+        // Many-valued = -1, Single-valued = 1
+        const upperBound = input.checked ? -1 : 1;
+        this.isUpdatingHeader = true;
+        this.onPropertyChanged(this.currentElement, 'upperBound', upperBound);
+        this.isUpdatingHeader = false;
+      });
+    }
 
     container.appendChild(input);
+    
+    // Add disabled reason message if needed
+    if (disabledReason) {
+      const helpText = document.createElement('span');
+      helpText.className = 'property-help-text';
+      helpText.style.cssText = 'color: var(--vscode-descriptionForeground); font-size: 11px; margin-left: 8px;';
+      helpText.textContent = disabledReason;
+      container.appendChild(helpText);
+    }
+    
     return container;
   }
 
@@ -494,13 +534,47 @@ export class PropertiesPanel {
     emptyOption.textContent = '(none)';
     select.appendChild(emptyOption);
 
-    // Add available references
+    // Add available references with validation
     if (prop.options) {
       prop.options.forEach((option) => {
         const optionElement = document.createElement('option');
         optionElement.value = option.id;
-        optionElement.textContent = option.label;
-        // Fix: Check if current value matches the option
+        
+        // Special validation for eOpposite options
+        if (prop.name === 'eOpposite' && EUtils.isEReference(this.currentElement)) {
+          const ref = this.currentElement;
+          const potentialOpposite = option.element;
+          
+          if (potentialOpposite) {
+            let disabledReason = '';
+            
+            // Check for many-to-many (Rule #7)
+            const refUpperBound = ref.getUpperBound ? ref.getUpperBound() : 1;
+            const oppUpperBound = potentialOpposite.getUpperBound ? potentialOpposite.getUpperBound() : 1;
+            
+            if (refUpperBound === -1 && oppUpperBound === -1) {
+              disabledReason = ' (unavailable - would create many-to-many)';
+              optionElement.disabled = true;
+            }
+            
+            // Check for double containment (Rule #6)
+            const refContainment = ref.isContainment ? ref.isContainment() : false;
+            const oppContainment = potentialOpposite.isContainment ? potentialOpposite.isContainment() : false;
+            
+            if (refContainment && oppContainment) {
+              disabledReason = ' (unavailable - both are containment)';
+              optionElement.disabled = true;
+            }
+            
+            optionElement.textContent = option.label + disabledReason;
+          } else {
+            optionElement.textContent = option.label;
+          }
+        } else {
+          optionElement.textContent = option.label;
+        }
+        
+        // Check if current value matches the option
         if (
           prop.value &&
           (prop.value === option.element ||
@@ -518,36 +592,6 @@ export class PropertiesPanel {
     select.addEventListener('change', () => {
       const selectedOption = prop.options?.find((o) => o.id === select.value);
       this.isUpdatingHeader = true;
-      
-      // Special validation for eOpposite property
-      if (prop.name === 'eOpposite' && selectedOption && EUtils.isEReference(this.currentElement)) {
-        const ref = this.currentElement;
-        const newOpposite = selectedOption.element;
-        
-        if (newOpposite) {
-          // Check for many-to-many (Rule #7)
-          const refUpperBound = ref.getUpperBound ? ref.getUpperBound() : 1;
-          const oppUpperBound = newOpposite.getUpperBound ? newOpposite.getUpperBound() : 1;
-          
-          if (refUpperBound === -1 && oppUpperBound === -1) {
-            alert("Cannot create many-to-many opposite relationships");
-            select.value = '';
-            this.isUpdatingHeader = false;
-            return;
-          }
-          
-          // Check for double containment (Rule #6)
-          const refContainment = ref.isContainment ? ref.isContainment() : false;
-          const oppContainment = newOpposite.isContainment ? newOpposite.isContainment() : false;
-          
-          if (refContainment && oppContainment) {
-            alert("Both sides of an opposite relationship cannot be containment");
-            select.value = '';
-            this.isUpdatingHeader = false;
-            return;
-          }
-        }
-      }
       
       this.onPropertyChanged(
         this.currentElement,
@@ -755,6 +799,14 @@ export class PropertiesPanel {
       const currentType = element.getEType ? element.getEType() : null;
       const upperBound = element.getUpperBound ? element.getUpperBound() : 1;
       const lowerBound = element.getLowerBound ? element.getLowerBound() : 0;
+      const isContainment = element.isContainment ? element.isContainment() : false;
+      
+      // Check if containment can be enabled
+      let containmentReadOnly = false;
+      const opposite = element.getEOpposite ? element.getEOpposite() : null;
+      if (!isContainment && opposite && opposite.isContainment && opposite.isContainment()) {
+        containmentReadOnly = true;
+      }
 
       properties.push(
         {
@@ -774,7 +826,8 @@ export class PropertiesPanel {
           name: 'containment',
           label: 'Containment',
           type: 'boolean',
-          value: element.isContainment ? element.isContainment() : false,
+          value: isContainment,
+          readOnly: containmentReadOnly,
         },
         {
           name: 'eOpposite',

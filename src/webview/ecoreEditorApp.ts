@@ -479,7 +479,9 @@ export class EcoreEditorApp {
         this.treeView.refresh();
         
         // If it's a reference-related change, also refresh properties to update opposite options
-        if (property === 'eType' || property === 'eOpposite' || property === 'containment') {
+        // Also refresh for interface changes to update available actions
+        if (property === 'eType' || property === 'eOpposite' || property === 'containment' || 
+            property === 'interface' || property === 'abstract') {
           // Small delay to ensure model is updated first
           setTimeout(() => {
             if (!this.propertiesPanel.isUpdating) {
