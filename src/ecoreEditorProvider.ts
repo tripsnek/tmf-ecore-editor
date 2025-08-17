@@ -24,6 +24,14 @@ export class EcoreEditorProvider implements vscode.CustomTextEditorProvider {
         // Track if we're updating from webview to prevent loops
         let updatingFromWebview = false;
 
+        // Check if document is empty or doesn't contain EPackage and populate with default content
+        const documentText = document.getText().trim();
+        if (documentText === '' || !documentText.includes('EPackage')) {
+            // console.log('Document is empty or missing EPackage, creating default content');
+            const defaultContent = this.generateDefaultEcoreContent(document.fileName);
+            await this.updateTextDocument(document, defaultContent);
+        }
+
         // Parse the ecore document
         let rootPackage: EPackage | null = null;
         let xmlAsJson = '';
@@ -160,6 +168,22 @@ export class EcoreEditorProvider implements vscode.CustomTextEditorProvider {
         webviewPanel.onDidDispose(() => {
             changeDocumentSubscription.dispose();
         });
+    }
+
+    /**
+     * Generates default Ecore content based on the filename
+     */
+    private generateDefaultEcoreContent(filePath: string): string {
+        // Extract the base name without extension
+        const baseName = path.basename(filePath, '.ecore');
+        
+        // Clean the name to make it a valid package name (remove special characters, spaces, etc.)
+        const packageName = baseName.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
+        
+        return `<?xml version="1.0" encoding="UTF-8"?>
+<ecore:EPackage xmi:version="2.0" xmlns:xmi="http://www.omg.org/XMI" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xmlns:ecore="http://www.eclipse.org/emf/2002/Ecore" name="${packageName}" nsURI="http://example.org/${packageName}" nsPrefix="${packageName}">
+</ecore:EPackage>`;
     }
 
     private async updateTextDocument(document: vscode.TextDocument, content: string) {
