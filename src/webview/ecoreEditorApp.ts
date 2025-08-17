@@ -1,7 +1,6 @@
-import { EPackage, EcoreStringParser, EcoreStringWriter } from '@tripsnek/tmf';
+import { EPackage, EcoreStringParser, EcoreStringWriter, TUtils } from '@tripsnek/tmf';
 import { ModelTreeView } from './modelTreeView';
 import { PropertiesPanel } from './propertiesPanel';
-import { ModelController } from './modelController';
 import { ModelActions } from './modelActions';
 
 declare const vscode: any;
@@ -15,7 +14,6 @@ export class EcoreEditorApp {
   private writer: EcoreStringWriter;
   private treeView: ModelTreeView;
   private propertiesPanel: PropertiesPanel;
-  private modelController: ModelController;
   private fileName: string = 'untitled.ecore';
   private isUpdatingFromExternal: boolean = false;
 
@@ -23,8 +21,6 @@ export class EcoreEditorApp {
     this.parser = new EcoreStringParser();
     this.writer = new EcoreStringWriter();
 
-    // Initialize components
-    this.modelController = new ModelController();
     
     // Create tree view with both callbacks
     this.treeView = new ModelTreeView(
@@ -318,10 +314,6 @@ export class EcoreEditorApp {
         this.fileName = fileName;
         document.getElementById('file-name')!.textContent = fileName;
       }
-
-      // Initialize model controller with the package
-      this.modelController.setRootPackage(this.rootPackage);
-
       // Render the tree
       this.treeView.render(this.rootPackage, this.fileName);
 
@@ -402,14 +394,7 @@ export class EcoreEditorApp {
         // For primitive types, we need to handle them specially
         const typeName = value.getName ? value.getName() : '';
         if (
-          [
-            'EString',
-            'EInt',
-            'EBoolean',
-            'EDouble',
-            'EFloat',
-            'EDate',
-          ].includes(typeName)
+          TUtils.PRIMITIVES.includes(typeName)
         ) {
           // For primitive types, we might need to create a proper reference
           // This depends on your TMF implementation
@@ -427,7 +412,7 @@ export class EcoreEditorApp {
         }
       } else {
         // Update the model using the controller
-        this.modelController.updateProperty(element, property, value);
+        ModelActions.updateProperty(element, property, value);
       }
 
       // Immediately update the document in VSCode

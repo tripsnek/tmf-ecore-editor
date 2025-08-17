@@ -113,16 +113,20 @@ export class ModelActions {
     }
 
     // Add delete action for non-root elements
-    if (elementType !== 'root') {
-      if (actions.length > 0) {
-        actions.push({ label: '-', icon: '', type: 'separator' });
+    if (elementType !== 'root' && elementType !=='Unknown' ) {
+
+      //no delete option for root package
+      if (!(element instanceof EPackageImpl && !element.eContainer())) {
+        if (actions.length > 0) {
+          actions.push({ label: '-', icon: '', type: 'separator' });
+        }
+        actions.push({
+          label: 'Delete',
+          icon: 'codicon-trash',
+          type: 'delete',
+          danger: true,
+        });
       }
-      actions.push({
-        label: 'Delete',
-        icon: 'codicon-trash',
-        type: 'delete',
-        danger: true,
-      });
     }
 
     return actions;
@@ -354,7 +358,13 @@ export class ModelActions {
       if (parent.getESubPackages) {
         parent.getESubPackages().remove(element);
       }
-    } else if (EUtils.isEClass(element) || EUtils.isEEnum(element)) {
+    } 
+    else if (EUtils.isEEnumLiteral(element)) {
+      if (parent.getELiterals) {
+        parent.getELiterals().remove(element);
+      }
+    }
+    else if (EUtils.isEClass(element) || EUtils.isEEnum(element)) {
       if (parent.getEClassifiers) {
         parent.getEClassifiers().remove(element);
       }
@@ -370,11 +380,7 @@ export class ModelActions {
       if (parent.getEParameters) {
         parent.getEParameters().remove(element);
       }
-    } else if (EUtils.isEEnumLiteral(element)) {
-      if (parent.getELiterals) {
-        parent.getELiterals().remove(element);
-      }
-    }
+    } 
 
     return { message: `Deleted ${elementType}: ${elementName}` };
   }
@@ -453,5 +459,160 @@ export class ModelActions {
     if (!element) return 'Unknown';
     const className = element.constructor.name;
     return className.replace(/Impl$/, '');
+  }
+
+    /**
+   * Update a property on an element
+   */
+public static updateProperty(element: any, property: string, value: any): void {
+
+    // Update the property based on its name
+    switch (property) {
+      case "name":
+        if (element.setName) {
+          element.setName(value);
+        }
+        break;
+
+      case "nsURI":
+        if (element.setNsURI) {
+          element.setNsURI(value);
+        }
+        break;
+
+      case "nsPrefix":
+        if (element.setNsPrefix) {
+          element.setNsPrefix(value);
+        }
+        break;
+
+      case "abstract":
+        if (element.setAbstract) {
+          element.setAbstract(value);
+        }
+        break;
+
+      case "interface":
+        if (element.setInterface) {
+          element.setInterface(value);
+        }
+        break;
+
+      case "containment":
+        if (element.setContainment) {
+          element.setContainment(value);
+        }
+        break;
+
+      case "id":
+        if (element.setId) {
+          element.setId(value);
+        }
+        break;
+
+      case "derived":
+        if (element.setDerived) {
+          element.setDerived(value);
+        }
+        break;
+
+      case "transient":
+        if (element.setTransient) {
+          element.setTransient(value);
+        }
+        break;
+
+      case "lowerBound":
+        if (element.setLowerBound) {
+          element.setLowerBound(value);
+        }
+        break;
+
+      case "upperBound":
+        if (element.setUpperBound) {
+          element.setUpperBound(value);
+        }
+        break;
+
+      case "eType":
+        if (element.setEType) {
+          element.setEType(value);
+        }
+        break;
+
+      case "eOpposite":
+        if (element.setEOpposite) {
+          element.setEOpposite(value);
+          // Also set the reverse reference
+          if (value && value.setEOpposite) {
+            value.setEOpposite(element);
+          }
+        }
+        break;
+
+      case "eSuperTypes":
+        // Handle super types - can be either a single value or an array
+        if (element.getESuperTypes) {
+          const superTypes = element.getESuperTypes();
+          superTypes.clear();
+          
+          // Handle both single value and array
+          if (value) {
+            if (Array.isArray(value)) {
+              // If it's an array, add all elements
+              value.forEach((superType: any) => {
+                superTypes.add(superType);
+              });
+            } else {
+              // If it's a single element, add just that one
+              superTypes.add(value);
+            }
+          }
+          // If value is null or undefined, the list remains cleared
+        }
+        break;
+
+      case "literal":
+        if (element.setLiteral) {
+          element.setLiteral(value);
+        }
+        break;
+
+      case "value":
+        if (element.setValue) {
+          element.setValue(value);
+        }
+        break;
+        
+      case "unsettable":
+        if (element.setUnsettable) {
+          element.setUnsettable(value);
+        }
+        break;
+
+      case "resolveProxies":
+        if (element.setResolveProxies) {
+          element.setResolveProxies(value);
+        }
+        break;
+
+      case "changeable":
+        if (element.setChangeable) {
+          element.setChangeable(value);
+        }
+        break;
+
+      case "volatile":
+        if (element.setVolatile) {
+          element.setVolatile(value);
+        }
+        break;
+
+      case "defaultValue":
+        if (element.setDefaultValue) {
+          element.setDefaultValue(value);
+        }
+        break;
+    }
   }
 }
