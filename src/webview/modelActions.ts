@@ -241,6 +241,8 @@ export class ModelActions {
     eClass.getEStructuralFeatures().add(attr);
     attr.setEContainingClass(eClass);
 
+    (eClass as EClassImpl).recomputeAllLists();
+
     return {
       newElement: attr,
       message: `Created new attribute: ${name} (configure in properties panel)`,
@@ -270,6 +272,8 @@ export class ModelActions {
     eClass.getEStructuralFeatures().add(ref);
     ref.setEContainingClass(eClass);
 
+    (eClass as EClassImpl).recomputeAllLists();
+
     return {
       newElement: ref,
       message: `Created new reference: ${name} (configure in properties panel)`,
@@ -289,6 +293,8 @@ export class ModelActions {
     //TODO: Would not have to do both if model was source generated
     eClass.getEOperations().add(op);
     op.setEContainingClass(eClass);
+
+    (eClass as EClassImpl).recomputeAllLists();
 
     return {
       newElement: op,
