@@ -2,6 +2,7 @@ import { EPackage, EcoreStringParser, EcoreStringWriter } from '@tripsnek/tmf';
 import { ModelTreeView } from './modelTreeView';
 import { PropertiesPanel } from './propertiesPanel';
 import { ModelController } from './modelController';
+import { ModelActions } from './modelActions';
 
 declare const vscode: any;
 
@@ -24,12 +25,18 @@ export class EcoreEditorApp {
 
     // Initialize components
     this.modelController = new ModelController();
-    this.treeView = new ModelTreeView(this.onTreeSelectionChanged.bind(this));
+    
+    // Create tree view with both callbacks
+    this.treeView = new ModelTreeView(
+      this.onTreeSelectionChanged.bind(this),
+      this.updateDocument.bind(this) // Pass updateDocument as callback
+    );
 
-    // Update PropertiesPanel constructor to include the onAddChild callback
+    // Update PropertiesPanel constructor to include both callbacks
     this.propertiesPanel = new PropertiesPanel(
       this.onPropertyChanged.bind(this),
-      this.onAddChildElement.bind(this), // Add this new callback
+      this.onAddChildElement.bind(this), // Add child callback
+      this.onDeleteElement.bind(this) // Delete callback
     );
 
     // Connect tree view to properties panel so it can access getAllClasses
@@ -341,8 +348,33 @@ export class EcoreEditorApp {
   // Add new method to handle adding child elements from properties panel
   private onAddChildElement(element: any, childType: string): void {
     this.treeView.addChildElement(element, childType);
-    // The tree view will handle selection and focusing
+    // The tree view will handle selection, focusing, and marking document dirty
+  }
+
+  // Add new method to handle deleting elements from properties panel
+  private onDeleteElement(element: any): void {
+    // Find parent for the element
+    const parent = ModelActions.findParent(element, this.rootPackage);
+    
+    if (!parent) {
+      this.showError('Cannot delete: parent element not found');
+      return;
+    }
+
+    // Execute delete action
+    const result = ModelActions.executeAction(element, 'delete', parent);
+    
+    // Refresh the tree
+    this.treeView.refresh();
+    
+    // Clear properties panel since element was deleted
+    this.propertiesPanel.clear();
+    
+    // Update document
     this.updateDocument();
+    
+    // Show status
+    this.setStatus(result.message);
   }
 
   private onTreeSelectionChanged(
@@ -446,6 +478,16 @@ export class EcoreEditorApp {
       ) {
         // For structural changes, refresh the whole tree
         this.treeView.refresh();
+        
+        // If it's a reference-related change, also refresh properties to update opposite options
+        if (property === 'eType' || property === 'eOpposite' || property === 'containment') {
+          // Small delay to ensure model is updated first
+          setTimeout(() => {
+            if (!this.propertiesPanel.isUpdating) {
+              this.propertiesPanel.showProperties(element);
+            }
+          }, 50);
+        }
       } else {
         // For simple property changes, just update the node label
         this.treeView.updateNodeLabel(element);

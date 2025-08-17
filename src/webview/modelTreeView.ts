@@ -6,16 +6,9 @@ import {
   EReference,
   EOperation,
   EParameter,
-  EClassImpl,
-  EPackageImpl,
-  EEnumImpl,
-  EAttributeImpl,
-  EReferenceImpl,
-  EOperationImpl,
-  EParameterImpl,
-  EEnumLiteralImpl,
 } from '@tripsnek/tmf';
 import { EUtils } from './eUtils';
+import { ModelActions } from './modelActions';
 
 interface TreeNode {
   element: any;
@@ -35,22 +28,15 @@ export class ModelTreeView {
   private contextMenu: HTMLElement | null = null;
   private rootPackage: EPackage | null = null;
   private visibleNodes: TreeNode[] = [];
-
-  // Counters for generating unique default names
-  private classCounter = 0;
-  private enumCounter = 0;
-  private packageCounter = 0;
-  private attributeCounter = 0;
-  private referenceCounter = 0;
-  private operationCounter = 0;
-  private parameterCounter = 0;
-  private literalCounter = 0;
+  private onUpdateDocument: () => void; // Callback to mark document as dirty
 
   // Update the constructor to handle the new signature
   constructor(
     onSelectionChanged: (element: any, focusNameField?: boolean) => void,
+    onUpdateDocument?: () => void,
   ) {
     this.onSelectionChanged = onSelectionChanged;
+    this.onUpdateDocument = onUpdateDocument || (() => {});
     this.createContextMenu();
     this.setupKeyboardNavigation();
   }
@@ -100,7 +86,7 @@ export class ModelTreeView {
         case 'Delete':
           e.preventDefault();
           if (this.selectedNode && this.selectedNode.parent) {
-            this.deleteNode(this.selectedNode);
+            this.executeAction(this.selectedNode.element, 'delete');
           }
           break;
       }
@@ -180,7 +166,7 @@ export class ModelTreeView {
   public render(rootPackage: EPackage, fileName: string): void {
     this.rootPackage = rootPackage;
     // Reset counters when loading a new model
-    this.resetCounters();
+    ModelActions.resetCounters();
 
     const container = document.getElementById('model-tree');
     if (!container) return;
@@ -195,17 +181,6 @@ export class ModelTreeView {
 
     // Focus the container to enable keyboard navigation
     container.focus();
-  }
-
-  private resetCounters(): void {
-    this.classCounter = 0;
-    this.enumCounter = 0;
-    this.packageCounter = 0;
-    this.attributeCounter = 0;
-    this.referenceCounter = 0;
-    this.operationCounter = 0;
-    this.parameterCounter = 0;
-    this.literalCounter = 0;
   }
 
   private createRootNode(rootPackage: EPackage, fileName: string): TreeNode {
@@ -375,7 +350,7 @@ export class ModelTreeView {
     return node;
   }
 
-private createAttributeNode(attr: EAttribute): TreeNode {
+  private createAttributeNode(attr: EAttribute): TreeNode {
     const type = attr.getEType() ? attr.getEType().getName() : "void";
     const multiplicity = this.getMultiplicity(attr);
     const label = `${attr.getName() || "unnamed"} : ${type}${multiplicity}`;
@@ -626,6 +601,11 @@ private createAttributeNode(attr: EAttribute): TreeNode {
       }
     }
     
+    // Special case: if a class name was changed, update all reference nodes that use this class as type
+    if (EUtils.isEClass(element)) {
+      this.updateReferenceLabelsForClass(element);
+    }
+    
     if (!nodeFound) {
       // Fallback: try searching through tree structure
       this.updateNodeLabelByTreeSearch(this.rootNode, element);
@@ -635,7 +615,40 @@ private createAttributeNode(attr: EAttribute): TreeNode {
     this.refreshWithoutFocusChange();
   }
 
-   private updateNodeLabelByTreeSearch(node: TreeNode | null, targetElement: any): boolean {
+  // New method to update reference labels when a class name changes
+  private updateReferenceLabelsForClass(eClass: EClass): void {
+    const className = eClass.getName() || "unnamed";
+    
+    // Update all reference nodes that have this class as their type
+    for (const [id, node] of this.nodeMap) {
+      if (node.type === "EReference" || node.type === "EAttribute" || node.type === "EParameter") {
+        const element = node.element;
+        if (element && element.getEType && element.getEType() === eClass) {
+          // Recreate the label with the updated class name
+          if (node.type === "EReference") {
+            const multiplicity = this.getMultiplicity(element);
+            const containment = element.isContainment ? element.isContainment() : false;
+            const containmentText = containment ? " [containment]" : "";
+            node.label = `${element.getName() || "unnamed"} : ${className}${multiplicity}${containmentText}`;
+          } else if (node.type === "EAttribute") {
+            const multiplicity = this.getMultiplicity(element);
+            node.label = `${element.getName() || "unnamed"} : ${className}${multiplicity}`;
+          } else if (node.type === "EParameter") {
+            const multiplicity = this.getMultiplicity(element);
+            node.label = `${element.getName() || "unnamed"} : ${className}${multiplicity}`;
+          }
+        }
+      } else if (node.type === "EOperation") {
+        // Update operation return type if it matches
+        const element = node.element;
+        if (element && element.getEType && element.getEType() === eClass) {
+          node.label = this.getOperationLabel(element);
+        }
+      }
+    }
+  }
+
+  private updateNodeLabelByTreeSearch(node: TreeNode | null, targetElement: any): boolean {
     if (!node) return false;
     
     if (node.element === targetElement) {
@@ -685,7 +698,6 @@ private createAttributeNode(attr: EAttribute): TreeNode {
     return false;
   }
 
-
   // Add this new method to refresh without changing focus
   private refreshWithoutFocusChange(): void {
     const container = document.getElementById('model-tree');
@@ -720,6 +732,7 @@ private createAttributeNode(attr: EAttribute): TreeNode {
       }
     }
   }
+
   public refresh(): void {
     const container = document.getElementById('model-tree');
     if (!container || !this.rootNode) return;
@@ -767,10 +780,11 @@ private createAttributeNode(attr: EAttribute): TreeNode {
     // Clear existing menu items
     this.contextMenu.innerHTML = '';
 
-    // Add menu items based on node type
-    const menuItems = this.getContextMenuItems(node);
+    // Get menu items from shared module
+    const menuItems = ModelActions.getActionsForElement(node.element);
+    
     menuItems.forEach((item) => {
-      if (item.label === '-') {
+      if (item.type === 'separator') {
         // Separator
         const separator = document.createElement('div');
         separator.className = 'context-menu-separator';
@@ -778,12 +792,12 @@ private createAttributeNode(attr: EAttribute): TreeNode {
       } else {
         const menuItem = document.createElement('div');
         menuItem.className = 'context-menu-item';
-        if (item.label === 'Delete') {
+        if (item.danger) {
           menuItem.classList.add('danger');
         }
         menuItem.innerHTML = `<i class="codicon ${item.icon}"></i> ${item.label}`;
         menuItem.addEventListener('click', () => {
-          item.action();
+          this.executeAction(node.element, item.type);
           this.contextMenu!.style.display = 'none';
         });
         this.contextMenu!.appendChild(menuItem);
@@ -796,120 +810,135 @@ private createAttributeNode(attr: EAttribute): TreeNode {
     this.contextMenu.style.display = 'block';
   }
 
-  private getContextMenuItems(
-    node: TreeNode,
-  ): Array<{ label: string; icon: string; action: () => void }> {
-    const items = [];
-
-    switch (node.type) {
-      case 'EPackage':
-        items.push(
-          {
-            label: 'Add Class',
-            icon: EUtils.getIconForType('EClass'),
-            action: () => this.addEClass(node),
-          },
-          {
-            label: 'Add Enum',
-            icon: EUtils.getIconForType('EEnum'),
-            action: () => this.addEEnum(node),
-          },
-          {
-            label: 'Add Sub-Package',
-            icon: EUtils.getIconForType('EPackage'),
-            action: () => this.addSubPackage(node),
-          },
-        );
-        break;
-      case 'EClass':
-        items.push(
-          {
-            label: 'Add Attribute',
-            icon: EUtils.getIconForType('EAttribute'),
-            action: () => this.addAttribute(node),
-          },
-          {
-            label: 'Add Reference',
-            icon: EUtils.getIconForType('EReference'),
-            action: () => this.addReference(node),
-          },
-          {
-            label: 'Add Operation',
-            icon: EUtils.getIconForType('EOperation'),
-            action: () => this.addOperation(node),
-          },
-        );
-        break;
-      case 'EOperation':
-        items.push({
-          label: 'Add Parameter',
-          icon: EUtils.getIconForType('EParameter'),
-          action: () => this.addParameter(node),
-        });
-        break;
-      case 'EEnum':
-        items.push({
-          label: 'Add Literal',
-          icon: EUtils.getIconForType('EEnumLiteral'),
-          action: () => this.addEnumLiteral(node),
-        });
-        break;
-    }
-
-    // Add delete option for non-root items
-    if (node.type !== 'root' && node.parent) {
-      if (items.length > 0) {
-        items.push({ label: '-', icon: '', action: () => {} }); // Separator
+  // Unified execution method using shared module
+  private executeAction(element: any, actionType: string): void {
+    const parent = element && actionType === 'delete' ? 
+      ModelActions.findParent(element, this.rootPackage) : null;
+    
+    const result = ModelActions.executeAction(element, actionType, parent);
+    
+    if (result.newElement) {
+      // Handle the new element by adding it to the tree
+      this.handleNewElement(element, result.newElement, actionType);
+      
+      // Select and possibly focus the new element
+      const newNode = this.findNodeForElement(result.newElement);
+      if (newNode) {
+        // Ensure parent is expanded
+        if (newNode.parent) {
+          newNode.parent.expanded = true;
+        }
+        this.refresh();
+        this.selectNode(newNode, result.shouldFocusName);
       }
-      items.push({
-        label: 'Delete',
-        icon: 'codicon-trash',
-        action: () => this.deleteNode(node),
-      });
+    } else if (actionType === 'delete') {
+      // Handle deletion
+      const node = this.findNodeForElement(element);
+      if (node && node.parent) {
+        // Remove from tree
+        const index = node.parent.children.indexOf(node);
+        if (index >= 0) {
+          node.parent.children.splice(index, 1);
+        }
+        
+        // Remove from node map
+        this.nodeMap.delete(node.id);
+        
+        // Clear selection if deleted node was selected
+        if (this.selectedNode === node) {
+          this.selectedNode = null;
+          this.onSelectionChanged(null);
+        }
+        
+        this.refresh();
+      }
     }
-
-    return items;
+    
+    // Mark document as dirty
+    if (this.onUpdateDocument) {
+      this.onUpdateDocument();
+    }
+    
+    // Show status message
+    this.showStatus(result.message);
   }
 
-  // Add this new public method to expose add functionality
+  // Add this new public method to expose add functionality from properties panel
   public addChildElement(parentElement: any, childType: string): void {
-    // Find the node for this element
-    let parentNode: TreeNode | null = null;
-    for (const [id, node] of this.nodeMap) {
-      if (node.element === parentElement) {
-        parentNode = node;
-        break;
-      }
-    }
+    this.executeAction(parentElement, childType);
+  }
 
+  // Helper to handle new elements and add them to tree
+  private handleNewElement(parent: any, newElement: any, actionType: string): void {
+    const parentNode = this.findNodeForElement(parent);
     if (!parentNode) return;
-
-    switch (childType) {
+    
+    let newNode: TreeNode;
+    
+    // Create appropriate node based on action type
+    switch (actionType) {
       case 'addClass':
-        this.addEClass(parentNode);
+        newNode = this.createClassNode(newElement as EClass);
         break;
       case 'addEnum':
-        this.addEEnum(parentNode);
+        newNode = this.createEnumNode(newElement as EEnum);
         break;
       case 'addSubPackage':
-        this.addSubPackage(parentNode);
+        newNode = this.createPackageNode(newElement as EPackage);
         break;
       case 'addAttribute':
-        this.addAttribute(parentNode);
-        break;
+        newNode = this.createAttributeNode(newElement as EAttribute);
+        // Insert before references and operations
+        const firstRefIndex = parentNode.children.findIndex(n => n.type === 'EReference');
+        const firstOpIndex = parentNode.children.findIndex(n => n.type === 'EOperation');
+        const insertIndex = firstRefIndex >= 0 ? firstRefIndex : 
+                          firstOpIndex >= 0 ? firstOpIndex : parentNode.children.length;
+        parentNode.children.splice(insertIndex, 0, newNode);
+        newNode.parent = parentNode;
+        return;
       case 'addReference':
-        this.addReference(parentNode);
-        break;
+        newNode = this.createReferenceNode(newElement as EReference);
+        // Insert before operations
+        const opIndex = parentNode.children.findIndex(n => n.type === 'EOperation');
+        const refInsertIndex = opIndex >= 0 ? opIndex : parentNode.children.length;
+        parentNode.children.splice(refInsertIndex, 0, newNode);
+        newNode.parent = parentNode;
+        return;
       case 'addOperation':
-        this.addOperation(parentNode);
+        newNode = this.createOperationNode(newElement as EOperation);
         break;
       case 'addParameter':
-        this.addParameter(parentNode);
+        newNode = this.createParameterNode(newElement as EParameter);
+        // Update parent operation label
+        parentNode.label = this.getOperationLabel(parent as EOperation);
         break;
       case 'addLiteral':
-        this.addEnumLiteral(parentNode);
+        newNode = {
+          element: newElement,
+          type: 'EEnumLiteral',
+          id: this.generateId(newElement),
+          label: `${newElement.getName() || newElement.getLiteral() || "unnamed"} = ${newElement.getValue() || 0}`,
+          children: [],
+          expanded: false,
+        };
+        this.nodeMap.set(newNode.id, newNode);
         break;
+      default:
+        return;
     }
+    
+    newNode.parent = parentNode;
+    parentNode.children.push(newNode);
+  }
+
+  // Helper to find node for an element
+  private findNodeForElement(element: any): TreeNode | null {
+    for (const [id, node] of this.nodeMap) {
+      if (node.element === element) {
+        return node;
+      }
+    }
+    return null;
   }
 
   // Update selectNode to accept focusNameField parameter
@@ -926,301 +955,6 @@ private createAttributeNode(attr: EAttribute): TreeNode {
     if (treeContainer && !focusNameField) {
       treeContainer.focus();
     }
-  }
-
-  // Update ALL add methods to pass true for focusNameField
-  private addEClass(packageNode: TreeNode): void {
-    const pkg = packageNode.element as EPackage;
-    const name = `Class${++this.classCounter}`;
-
-    // Create new EClass
-    const eClass = new EClassImpl();
-    eClass.setName(name);
-    pkg.getEClassifiers().add(eClass);
-    eClass.setEPackage(pkg);
-
-    // Add to tree
-    const classNode = this.createClassNode(eClass);
-    classNode.parent = packageNode;
-    packageNode.children.push(classNode);
-
-    // Expand parent and refresh
-    packageNode.expanded = true;
-    this.refresh();
-    this.selectNode(classNode, true); // Pass true to focus name field
-
-    this.showStatus(`Created new class: ${name} (rename in properties panel)`);
-  }
-
-  private addEEnum(packageNode: TreeNode): void {
-    const pkg = packageNode.element as EPackage;
-    const name = `Enum${++this.enumCounter}`;
-
-    // Create new EEnum
-    const eEnum = new EEnumImpl();
-    eEnum.setName(name);
-    pkg.getEClassifiers().add(eEnum);
-    eEnum.setEPackage(pkg);
-
-    // Add to tree
-    const enumNode = this.createEnumNode(eEnum);
-    enumNode.parent = packageNode;
-    packageNode.children.push(enumNode);
-
-    // Expand parent and refresh
-    packageNode.expanded = true;
-    this.refresh();
-    this.selectNode(enumNode, true); // Pass true to focus name field
-
-    this.showStatus(`Created new enum: ${name} (rename in properties panel)`);
-  }
-
-  private addSubPackage(packageNode: TreeNode): void {
-    const parentPkg = packageNode.element as EPackage;
-    const name = `package${++this.packageCounter}`;
-
-    // Create new sub-package
-    const subPkg = new EPackageImpl(name, `http://www.example.org/${name}`);
-    subPkg.setNsPrefix(name);
-    parentPkg.getESubPackages().add(subPkg);
-    subPkg.setESuperPackage(parentPkg);
-
-    // Add to tree
-    const subPkgNode = this.createPackageNode(subPkg);
-    subPkgNode.parent = packageNode;
-    packageNode.children.push(subPkgNode);
-
-    // Expand parent and refresh
-    packageNode.expanded = true;
-    this.refresh();
-    this.selectNode(subPkgNode, true); // Pass true to focus name field
-
-    this.showStatus(
-      `Created new package: ${name} (rename in properties panel)`,
-    );
-  }
-
-  private addAttribute(classNode: TreeNode): void {
-    const eClass = classNode.element as EClass;
-    const name = `attribute${++this.attributeCounter}`;
-
-    // Create new attribute
-    const attr = new EAttributeImpl();
-    attr.setName(name);
-
-    // Set common defaults that are often expected
-    if (attr.setLowerBound) attr.setLowerBound(1);
-    if (attr.setUpperBound) attr.setUpperBound(1);
-
-    eClass.getEStructuralFeatures().add(attr);
-    attr.setEContainingClass(eClass);
-
-    // Add to tree
-    const attrNode = this.createAttributeNode(attr);
-    attrNode.parent = classNode;
-    // Insert before references and operations
-    const firstRefIndex = classNode.children.findIndex(
-      (n) => n.type === 'EReference',
-    );
-    const firstOpIndex = classNode.children.findIndex(
-      (n) => n.type === 'EOperation',
-    );
-    const insertIndex =
-      firstRefIndex >= 0
-        ? firstRefIndex
-        : firstOpIndex >= 0
-          ? firstOpIndex
-          : classNode.children.length;
-    classNode.children.splice(insertIndex, 0, attrNode);
-
-    // Expand parent and refresh
-    classNode.expanded = true;
-    this.refresh();
-    this.selectNode(attrNode, true); // Pass true to focus name field
-
-    this.showStatus(
-      `Created new attribute: ${name} (configure in properties panel)`,
-    );
-  }
-
-  private addReference(classNode: TreeNode): void {
-    const eClass = classNode.element as EClass;
-    const name = `reference${++this.referenceCounter}`;
-
-    // Create new reference
-    const ref = new EReferenceImpl();
-    ref.setName(name);
-
-    // For containment references, set resolveProxies to false by default
-    if (ref.setResolveProxies) {
-      ref.setResolveProxies(false);
-    }
-
-    eClass.getEStructuralFeatures().add(ref);
-    ref.setEContainingClass(eClass);
-
-    // Add to tree
-    const refNode = this.createReferenceNode(ref);
-    refNode.parent = classNode;
-    // Insert before operations
-    const firstOpIndex = classNode.children.findIndex(
-      (n) => n.type === 'EOperation',
-    );
-    const insertIndex =
-      firstOpIndex >= 0 ? firstOpIndex : classNode.children.length;
-    classNode.children.splice(insertIndex, 0, refNode);
-
-    // Expand parent and refresh
-    classNode.expanded = true;
-    this.refresh();
-    this.selectNode(refNode, true); // Pass true to focus name field
-
-    this.showStatus(
-      `Created new reference: ${name} (configure in properties panel)`,
-    );
-  }
-
-  private addOperation(classNode: TreeNode): void {
-    const eClass = classNode.element as EClass;
-    const name = `operation${++this.operationCounter}`;
-
-    // Create new operation
-    const op = new EOperationImpl();
-    op.setName(name);
-    eClass.getEOperations().add(op);
-    op.setEContainingClass(eClass);
-
-    // Add to tree
-    const opNode = this.createOperationNode(op);
-    opNode.parent = classNode;
-    classNode.children.push(opNode);
-
-    // Expand parent and refresh
-    classNode.expanded = true;
-    this.refresh();
-    this.selectNode(opNode, true); // Pass true to focus name field
-
-    this.showStatus(
-      `Created new operation: ${name} (configure in properties panel)`,
-    );
-  }
-
-  private addParameter(opNode: TreeNode): void {
-    const operation = opNode.element as EOperation;
-    const name = `param${++this.parameterCounter}`;
-
-    // Create new parameter
-    const param = new EParameterImpl();
-    param.setName(name);
-    operation.getEParameters().add(param);
-
-    // Add to tree
-    const paramNode = this.createParameterNode(param);
-    paramNode.parent = opNode;
-    opNode.children.push(paramNode);
-
-    // Update operation label
-    opNode.label = this.getOperationLabel(operation);
-
-    // Expand parent and refresh
-    opNode.expanded = true;
-    this.refresh();
-    this.selectNode(paramNode, true); // Pass true to focus name field
-
-    this.showStatus(
-      `Created new parameter: ${name} (configure in properties panel)`,
-    );
-  }
-
-  private addEnumLiteral(enumNode: TreeNode): void {
-    const eEnum = enumNode.element as EEnum;
-    const name = `LITERAL_${++this.literalCounter}`;
-
-    // Create new enum literal
-    const literal = new EEnumLiteralImpl();
-    literal.setName(name);
-    literal.setLiteral(name);
-    literal.setValue(eEnum.getELiterals().size());
-    eEnum.getELiterals().add(literal);
-    literal.setEEnum(eEnum);
-
-    // Add to tree
-    const literalNode: TreeNode = {
-      element: literal,
-      type: 'EEnumLiteral',
-      id: this.generateId(literal),
-      label: literal.getName() || 'unnamed',
-      children: [],
-      expanded: false,
-      parent: enumNode,
-    };
-    enumNode.children.push(literalNode);
-
-    // Expand parent and refresh
-    enumNode.expanded = true;
-    this.refresh();
-    this.selectNode(literalNode, true); // Pass true to focus name field
-
-    this.showStatus(
-      `Created new literal: ${name} (rename in properties panel)`,
-    );
-  }
-
-  private deleteNode(node: TreeNode): void {
-    if (!node.parent) return;
-
-    const parent = node.parent.element;
-    const element = node.element;
-
-    // Remove from model
-    if (node.type === 'EClass' || node.type === 'EEnum') {
-      const pkg = parent as EPackage;
-      const classifiers = pkg.getEClassifiers();
-      classifiers.remove(element);
-    } else if (node.type === 'EAttribute' || node.type === 'EReference') {
-      const eClass = parent as EClass;
-      const features = eClass.getEStructuralFeatures();
-      features.remove(element);
-    } else if (node.type === 'EOperation') {
-      const eClass = parent as EClass;
-      const operations = eClass.getEOperations();
-      operations.remove(element);
-    } else if (node.type === 'EParameter') {
-      const operation = parent as EOperation;
-      const params = operation.getEParameters();
-      params.remove(element);
-      // Update operation label
-      if (node.parent) {
-        node.parent.label = this.getOperationLabel(operation);
-      }
-    } else if (node.type === 'EEnumLiteral') {
-      const eEnum = parent as EEnum;
-      const literals = eEnum.getELiterals();
-      literals.remove(element);
-    } else if (node.type === 'EPackage') {
-      const parentPkg = parent as EPackage;
-      const subPackages = parentPkg.getESubPackages();
-      subPackages.remove(element);
-    }
-
-    // Remove from tree
-    const parentNode = node.parent;
-    const index = parentNode.children.indexOf(node);
-    if (index >= 0) {
-      parentNode.children.splice(index, 1);
-    }
-
-    // Remove from node map
-    this.nodeMap.delete(node.id);
-
-    // Clear selection if deleted node was selected
-    if (this.selectedNode === node) {
-      this.selectedNode = null;
-      this.onSelectionChanged(null);
-    }
-
-    this.refresh();
-    this.showStatus(`Deleted ${node.type}: ${node.label}`);
   }
 
   private showStatus(message: string): void {
@@ -1248,15 +982,6 @@ private createAttributeNode(attr: EAttribute): TreeNode {
     //simple multiplicity: one or many
     if(upper == -1) return `[*]`;
     return '';
-
-    //TODO: if we ever do more complicated multiplicity, we can switch to these
-    // if (lower === 0 && upper === 1) return '';
-    // if (lower === 1 && upper === 1) return '';
-    // if (lower === 0 && upper === -1) return '[*]';
-    // if (lower === 1 && upper === -1) return '[1..*]';
-    // if (upper === -1) return `[${lower}..*]`;
-    // if (lower === upper) return `[${lower}]`;
-    // return `[${lower}..${upper}]`;
   }
 
   private getOperationLabel(op: EOperation): string {

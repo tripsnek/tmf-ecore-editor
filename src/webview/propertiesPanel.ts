@@ -1,4 +1,5 @@
 import { EUtils } from "./eUtils";
+import { ModelActions } from "./modelActions";
 
 interface PropertyDescriptor {
   name: string;
@@ -26,14 +27,17 @@ export class PropertiesPanel {
   ) => void;
   private treeView: any; // Reference to tree view for getting all classes
   private onAddChild: (element: any, childType: string) => void; // Callback for adding children
+  private onDeleteElement: (element: any) => void; // Callback for deleting element
   private isUpdatingHeader: boolean = false; // Flag to prevent rebuilding during header updates
 
   constructor(
     onPropertyChanged: (element: any, property: string, value: any) => void,
     onAddChild?: (element: any, childType: string) => void,
+    onDeleteElement?: (element: any) => void,
   ) {
     this.onPropertyChanged = onPropertyChanged;
     this.onAddChild = onAddChild;
+    this.onDeleteElement = onDeleteElement;
   }
 
   public setTreeView(treeView: any): void {
@@ -72,9 +76,14 @@ export class PropertiesPanel {
     this.updateHeader(header, element);
     form.appendChild(header);
 
-    // Add action buttons based on element type
-    const actions = this.getActionsForElement(element);
-    if (actions.length > 0) {
+    // Get actions from shared module
+    const actions = ModelActions.getActionsForElement(element);
+    
+    // Filter out separator and delete action for the button bar
+    const addActions = actions.filter(a => a.type !== 'separator' && a.type !== 'delete');
+    const hasDelete = actions.some(a => a.type === 'delete');
+    
+    if (addActions.length > 0 || hasDelete) {
       const actionsContainer = document.createElement('div');
       actionsContainer.className = 'properties-actions';
       actionsContainer.style.cssText = `
@@ -83,9 +92,19 @@ export class PropertiesPanel {
         padding: 8px;
         border-bottom: 1px solid var(--vscode-panel-border);
         flex-wrap: wrap;
+        justify-content: space-between;
       `;
 
-      actions.forEach((action) => {
+      // Container for add buttons
+      const addButtonsContainer = document.createElement('div');
+      addButtonsContainer.style.cssText = `
+        display: flex;
+        gap: 4px;
+        flex-wrap: wrap;
+      `;
+
+      // Add buttons for add actions
+      addActions.forEach((action) => {
         const button = document.createElement('button');
         button.className = 'toolbar-btn';
         button.title = action.label;
@@ -96,15 +115,45 @@ export class PropertiesPanel {
           display: flex;
           align-items: center;
           gap: 4px;
-          toolbar-btn toolbar-btn-primary
         `;
         button.addEventListener('click', () => {
           if (this.onAddChild) {
             this.onAddChild(element, action.type);
           }
         });
-        actionsContainer.appendChild(button);
+        addButtonsContainer.appendChild(button);
       });
+
+      actionsContainer.appendChild(addButtonsContainer);
+
+      // Add delete button if applicable (aligned to the right)
+      if (hasDelete) {
+        const deleteButton = document.createElement('button');
+        deleteButton.className = 'toolbar-btn';
+        deleteButton.title = 'Delete';
+        deleteButton.innerHTML = `<i class="codicon codicon-trash"></i> Delete`;
+        deleteButton.style.cssText = `
+          padding: 4px 8px;
+          font-size: 11px;
+          display: flex;
+          align-items: center;
+          gap: 4px;
+          background-color: var(--vscode-button-background);
+          color: var(--vscode-button-foreground);
+        `;
+        deleteButton.addEventListener('click', () => {
+          if (this.onDeleteElement) {
+            this.onDeleteElement(element);
+          }
+        });
+        deleteButton.addEventListener('mouseenter', () => {
+          deleteButton.style.backgroundColor = 'var(--vscode-statusBarItem-errorBackground)';
+        });
+        deleteButton.addEventListener('mouseleave', () => {
+          deleteButton.style.backgroundColor = 'var(--vscode-button-background)';
+        });
+        actionsContainer.appendChild(deleteButton);
+      }
 
       form.appendChild(actionsContainer);
     }
@@ -151,66 +200,6 @@ export class PropertiesPanel {
         <span style="color: var(--vscode-descriptionForeground);">: ${elementName}</span>
       </div>
     `;
-  }
-
-  private getActionsForElement(
-    element: any,
-  ): Array<{ label: string; icon: string; type: string }> {
-    const actions = [];
-    const elementType = this.getElementTypeName(element);
-
-    switch (elementType) {
-      case 'EPackage':
-        actions.push(
-          {
-            label: 'Add Class',
-            icon: EUtils.getIconForType('EClass'),
-            type: 'addClass',
-          },
-          { label: 'Add Enum', icon: EUtils.getIconForType('EEnum'), type: 'addEnum' },
-          {
-            label: 'Add Sub-Package',
-            icon: EUtils.getIconForType('EPackage'),
-            type: 'addSubPackage',
-          },
-        );
-        break;
-      case 'EClass':
-        actions.push(
-          {
-            label: 'Add Attribute',
-            icon: EUtils.getIconForType('EAttribute'),
-            type: 'addAttribute',
-          },
-          {
-            label: 'Add Reference',
-            icon: EUtils.getIconForType('EReference'),
-            type: 'addReference',
-          },
-          {
-            label: 'Add Operation',
-            icon: EUtils.getIconForType('EOperation'),
-            type: 'addOperation',
-          },
-        );
-        break;
-      case 'EOperation':
-        actions.push({
-          label: 'Add Parameter',
-          icon: EUtils.getIconForType('EParameter'),
-          type: 'addParameter',
-        });
-        break;
-      case 'EEnum':
-        actions.push({
-          label: 'Add Literal',
-          icon: EUtils.getIconForType('EEnum'),
-          type: 'addLiteral',
-        });
-        break;
-    }
-
-    return actions;
   }
 
   public clear(): void {
@@ -495,6 +484,16 @@ export class PropertiesPanel {
         selectedOption ? selectedOption.element : null,
       );
       this.isUpdatingHeader = false;
+      
+      // If this is an eOpposite or eType change on a reference, refresh properties
+      // to update available opposites for other references
+      if (prop.name === 'eOpposite' || (prop.name === 'eType' && EUtils.isEReference(this.currentElement))) {
+        setTimeout(() => {
+          if (!this.isUpdatingHeader) {
+            this.showProperties(this.currentElement);
+          }
+        }, 100);
+      }
     });
 
     container.appendChild(select);
