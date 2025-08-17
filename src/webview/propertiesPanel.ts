@@ -127,33 +127,34 @@ export class PropertiesPanel {
       actionsContainer.appendChild(addButtonsContainer);
 
       // Add delete button if applicable (aligned to the right)
-      if (hasDelete) {
-        const deleteButton = document.createElement('button');
-        deleteButton.className = 'toolbar-btn';
-        deleteButton.title = 'Delete';
-        deleteButton.innerHTML = `<i class="codicon codicon-trash"></i> Delete`;
-        deleteButton.style.cssText = `
-          padding: 4px 8px;
-          font-size: 11px;
-          display: flex;
-          align-items: center;
-          gap: 4px;
-          background-color: var(--vscode-button-background);
-          color: var(--vscode-button-foreground);
-        `;
-        deleteButton.addEventListener('click', () => {
-          if (this.onDeleteElement) {
-            this.onDeleteElement(element);
-          }
-        });
-        deleteButton.addEventListener('mouseenter', () => {
-          deleteButton.style.backgroundColor = 'var(--vscode-statusBarItem-errorBackground)';
-        });
-        deleteButton.addEventListener('mouseleave', () => {
-          deleteButton.style.backgroundColor = 'var(--vscode-button-background)';
-        });
-        actionsContainer.appendChild(deleteButton);
-      }
+      //TODO: This requires updating the tree editor somehow
+      // if (hasDelete) {
+      //   const deleteButton = document.createElement('button');
+      //   deleteButton.className = 'toolbar-btn';
+      //   deleteButton.title = 'Delete';
+      //   deleteButton.innerHTML = `<i class="codicon codicon-trash"></i> Delete`;
+      //   deleteButton.style.cssText = `
+      //     padding: 4px 8px;
+      //     font-size: 11px;
+      //     display: flex;
+      //     align-items: center;
+      //     gap: 4px;
+      //     background-color: var(--vscode-button-background);
+      //     color: var(--vscode-button-foreground);
+      //   `;
+      //   deleteButton.addEventListener('click', () => {
+      //     if (this.onDeleteElement) {
+      //       this.onDeleteElement(element);
+      //     }
+      //   });
+      //   deleteButton.addEventListener('mouseenter', () => {
+      //     deleteButton.style.backgroundColor = 'var(--vscode-statusBarItem-errorBackground)';
+      //   });
+      //   deleteButton.addEventListener('mouseleave', () => {
+      //     deleteButton.style.backgroundColor = 'var(--vscode-button-background)';
+      //   });
+      //   actionsContainer.appendChild(deleteButton);
+      // }
 
       form.appendChild(actionsContainer);
     }
