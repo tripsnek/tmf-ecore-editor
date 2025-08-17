@@ -593,7 +593,7 @@ export class ModelTreeView {
           const name = element.getName ? element.getName() : 
                        element.getLiteral ? element.getLiteral() : "unnamed";
           const value = element.getValue ? element.getValue() : 0;
-          node.label = `${name} = ${value}`;
+          node.label = `${name}`;
         } else if (element.getName) {
           // For all other named elements (EPackage, EEnum, etc.)
           node.label = element.getName() || "unnamed";
