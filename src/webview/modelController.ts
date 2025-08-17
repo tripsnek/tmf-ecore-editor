@@ -6,6 +6,13 @@ import {
   EReference,
   EOperation,
   EParameter,
+  EPackageImpl,
+  EClassImpl,
+  EEnumImpl,
+  EAttributeImpl,
+  EReferenceImpl,
+  EOperationImpl,
+  EParameterImpl,
 } from "@tripsnek/tmf";
 import { EUtils } from "./eUtils";
 
@@ -404,54 +411,43 @@ public updateProperty(element: any, property: string, value: any): void {
   }
 
   // Factory methods for creating model elements
-  // These would need to be implemented based on the actual TMF API
-
   private createEPackage(name: string): EPackage {
-    // This is a placeholder - actual implementation depends on TMF
-    const pkg = {} as EPackage;
-    if (pkg.setName) pkg.setName(name);
-    return pkg;
+    return new EPackageImpl(name,'');
   }
 
   private createEClass(name: string): EClass {
-    // This is a placeholder - actual implementation depends on TMF
-    const eClass = {} as EClass;
-    if (eClass.setName) eClass.setName(name);
+    const eClass = new EClassImpl();
+    eClass.setName(name);
     return eClass;
   }
 
   private createEEnum(name: string): EEnum {
-    // This is a placeholder - actual implementation depends on TMF
-    const eEnum = {} as EEnum;
-    if (eEnum.setName) eEnum.setName(name);
+    const eEnum = new EEnumImpl();
+    eEnum.setName(name);
     return eEnum;
   }
 
   private createEAttribute(name: string): EAttribute {
-    // This is a placeholder - actual implementation depends on TMF
-    const attr = {} as EAttribute;
-    if (attr.setName) attr.setName(name);
+    const attr = new EAttributeImpl();
+    attr.setName(name);
     return attr;
   }
 
   private createEReference(name: string): EReference {
-    // This is a placeholder - actual implementation depends on TMF
-    const ref = {} as EReference;
-    if (ref.setName) ref.setName(name);
+    const ref = new EReferenceImpl();
+    ref.setName(name);
     return ref;
   }
 
   private createEOperation(name: string): EOperation {
-    // This is a placeholder - actual implementation depends on TMF
-    const op = {} as EOperation;
-    if (op.setName) op.setName(name);
+    const op = new EOperationImpl();
+     op.setName(name);
     return op;
   }
 
   private createEParameter(name: string): EParameter {
-    // This is a placeholder - actual implementation depends on TMF
-    const param = {} as EParameter;
-    if (param.setName) param.setName(name);
+    const param = new EParameterImpl();
+    param.setName(name);
     return param;
   }
 
