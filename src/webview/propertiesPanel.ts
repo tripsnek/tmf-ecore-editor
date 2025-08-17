@@ -146,7 +146,7 @@ export class PropertiesPanel {
     const elementType = this.getElementTypeName(element);
     header.innerHTML = `
       <div style="display: flex; align-items: center; gap: 8px;">
-        <i class="codicon ${this.getIconForElement(element)}"></i>
+        <i class="codicon ${EUtils.getIconForType(element)}"></i>
         <span>${elementType}</span>
         <span style="color: var(--vscode-descriptionForeground);">: ${elementName}</span>
       </div>
@@ -902,20 +902,4 @@ export class PropertiesPanel {
     const className = element.constructor.name;
     return className.replace(/Impl$/, '');
   }
-
-  private getIconForElement(element: any): string {
-    const typeName = this.getElementTypeName(element);
-    const icons: { [key: string]: string } = {
-      EPackage: 'codicon-folder',
-      EClass: 'codicon-symbol-class',
-      EEnum: 'codicon-symbol-enum',
-      EAttribute: 'codicon-symbol-field',
-      EReference: 'codicon-references',
-      EOperation: 'codicon-symbol-method',
-      EParameter: 'codicon-symbol-parameter',
-      EEnumLiteral: 'codicon-symbol-constant',
-    };
-    return icons[typeName] || 'codicon-circle-outline';
-  }
-
 }
