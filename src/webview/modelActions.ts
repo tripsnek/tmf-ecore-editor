@@ -78,23 +78,30 @@ export class ModelActions {
         );
         break;
       case 'EClass':
-        actions.push(
-          {
-            label: 'Add Attribute',
-            icon: EUtils.getIconForType('EAttribute'),
-            type: 'addAttribute',
-          },
-          {
-            label: 'Add Reference',
-            icon: EUtils.getIconForType('EReference'),
-            type: 'addReference',
-          },
-          {
-            label: 'Add Operation',
-            icon: EUtils.getIconForType('EOperation'),
-            type: 'addOperation',
-          },
-        );
+        // Check if it's an interface - interfaces can only have operations
+        const isInterface = element.isInterface ? element.isInterface() : false;
+        
+        if (!isInterface) {
+          actions.push(
+            {
+              label: 'Add Attribute',
+              icon: EUtils.getIconForType('EAttribute'),
+              type: 'addAttribute',
+            },
+            {
+              label: 'Add Reference',
+              icon: EUtils.getIconForType('EReference'),
+              type: 'addReference',
+            },
+          );
+        }
+        
+        // Operations can be added to both interfaces and regular classes
+        actions.push({
+          label: 'Add Operation',
+          icon: EUtils.getIconForType('EOperation'),
+          type: 'addOperation',
+        });
         break;
       case 'EOperation':
         actions.push({
@@ -467,10 +474,49 @@ export class ModelActions {
     return className.replace(/Impl$/, '');
   }
 
-    /**
+  /**
+   * Validate if setting an opposite would create an invalid state
+   */
+  public static validateOppositeSettings(
+    reference: EReference,
+    oppositeReference: EReference | null,
+    checkContainment: boolean = false
+  ): { valid: boolean; message?: string } {
+    if (!oppositeReference) {
+      return { valid: true };
+    }
+
+    // Check for many-to-many relationships (Rule #7)
+    const refUpperBound = reference.getUpperBound ? reference.getUpperBound() : 1;
+    const oppUpperBound = oppositeReference.getUpperBound ? oppositeReference.getUpperBound() : 1;
+    
+    if (refUpperBound === -1 && oppUpperBound === -1) {
+      return { 
+        valid: false, 
+        message: "Cannot create many-to-many opposite relationships" 
+      };
+    }
+
+    // Check for double containment (Rule #6)
+    if (checkContainment) {
+      const refContainment = reference.isContainment ? reference.isContainment() : false;
+      const oppContainment = oppositeReference.isContainment ? oppositeReference.isContainment() : false;
+      
+      if (refContainment && oppContainment) {
+        return { 
+          valid: false, 
+          message: "Both sides of an opposite relationship cannot be containment" 
+        };
+      }
+    }
+
+    return { valid: true };
+  }
+
+  /**
    * Update a property on an element
    */
-public static updateProperty(element: any, property: string, value: any): void {
+  public static updateProperty(element: any, property: string, value: any): void {
 
     // Update the property based on its name
     switch (property) {
@@ -500,12 +546,31 @@ public static updateProperty(element: any, property: string, value: any): void {
 
       case "interface":
         if (element.setInterface) {
+          // Validate: cannot change to interface if it has structural features (Rule #8)
+          if (value === true && EUtils.isEClass(element)) {
+            const eClass = element as EClass;
+            const attributes = eClass.getEAttributes();
+            const references = eClass.getEReferences();
+            
+            if ((attributes && attributes.size() > 0) || (references && references.size() > 0)) {
+              throw new Error("Cannot change class with structural features to an interface");
+            }
+          }
           element.setInterface(value);
         }
         break;
 
       case "containment":
         if (element.setContainment) {
+          // Validate containment rules when setting to true
+          if (value === true && EUtils.isEReference(element)) {
+            const ref = element as EReference;
+            const opposite = ref.getEOpposite ? ref.getEOpposite() : null;
+            
+            if (opposite && opposite.isContainment && opposite.isContainment()) {
+              throw new Error("Cannot set containment: opposite reference is already a containment");
+            }
+          }
           element.setContainment(value);
         }
         break;
@@ -542,16 +607,49 @@ public static updateProperty(element: any, property: string, value: any): void {
 
       case "eType":
         if (element.setEType) {
+          // If this is a reference and we're changing the type, clear any opposite relationship (Rule #4)
+          if (EUtils.isEReference(element)) {
+            const ref = element as EReference;
+            const oldOpposite = ref.getEOpposite ? ref.getEOpposite() : null;
+            
+            if (oldOpposite) {
+              // Clear both sides of the opposite relationship
+              if (oldOpposite.setEOpposite) {
+                oldOpposite.setEOpposite(null);
+              }
+              ref.setEOpposite(null);
+            }
+          }
+          
           element.setEType(value);
         }
         break;
 
       case "eOpposite":
         if (element.setEOpposite) {
-          element.setEOpposite(value);
-          // Also set the reverse reference
-          if (value && value.setEOpposite) {
-            value.setEOpposite(element);
+          const ref = element as EReference;
+          const oldOpposite = ref.getEOpposite ? ref.getEOpposite() : null;
+          
+          // Clear old opposite if it exists (Rule #3)
+          if (oldOpposite && oldOpposite.setEOpposite) {
+            oldOpposite.setEOpposite(null);
+          }
+          
+          // Validate new opposite if not null
+          if (value) {
+            const validation = this.validateOppositeSettings(ref, value, true);
+            if (!validation.valid) {
+              throw new Error(validation.message);
+            }
+            
+            // Set the new opposite on both sides
+            element.setEOpposite(value);
+            if (value.setEOpposite) {
+              value.setEOpposite(element);
+            }
+          } else {
+            // Setting to null (Rule #3)
+            element.setEOpposite(null);
           }
         }
         break;
@@ -620,5 +718,36 @@ public static updateProperty(element: any, property: string, value: any): void {
         }
         break;
     }
+  }
+
+  /**
+   * Check if setting a super type would create an inheritance cycle (Rule #5)
+   */
+  public static wouldCreateInheritanceCycle(
+    eClass: EClass,
+    potentialSuperType: EClass
+  ): boolean {
+    if (!potentialSuperType) return false;
+    if (eClass === potentialSuperType) return true;
+    
+    // Check if potentialSuperType is already a subtype of eClass
+    return this.isSubtypeOf(potentialSuperType, eClass);
+  }
+
+  private static isSubtypeOf(potentialSubtype: EClass, potentialSupertype: EClass): boolean {
+    if (!potentialSubtype || !potentialSupertype) return false;
+    if (potentialSubtype === potentialSupertype) return true;
+    
+    const superTypes = potentialSubtype.getESuperTypes();
+    if (!superTypes) return false;
+    
+    for (let i = 0; i < superTypes.size(); i++) {
+      const superType = superTypes.get(i);
+      if (this.isSubtypeOf(superType, potentialSupertype)) {
+        return true;
+      }
+    }
+    
+    return false;
   }
 }

@@ -319,6 +319,20 @@ export class PropertiesPanel {
     // Use change event for immediate updates
     input.addEventListener('change', () => {
       this.isUpdatingHeader = true;
+      
+      // Special validation for containment property (Rule #6)
+      if (prop.name === 'containment' && input.checked && EUtils.isEReference(this.currentElement)) {
+        const ref = this.currentElement;
+        const opposite = ref.getEOpposite ? ref.getEOpposite() : null;
+        
+        if (opposite && opposite.isContainment && opposite.isContainment()) {
+          alert("Cannot set containment: opposite reference is already a containment");
+          input.checked = false;
+          this.isUpdatingHeader = false;
+          return;
+        }
+      }
+      
       this.onPropertyChanged(this.currentElement, prop.name, input.checked);
       this.isUpdatingHeader = false;
     });
@@ -372,17 +386,26 @@ export class PropertiesPanel {
     select.disabled = prop.readOnly || false;
     select.setAttribute('data-property', prop.name);
 
+    // Check if the class has structural features
+    const hasStructuralFeatures = this.currentElement && EUtils.isEClass(this.currentElement) &&
+      ((this.currentElement.getEAttributes && this.currentElement.getEAttributes().size() > 0) ||
+       (this.currentElement.getEReferences && this.currentElement.getEReferences().size() > 0));
+
     // Add options for class type (Concrete/Abstract/Interface)
     const options = [
       { value: 'concrete', label: 'Concrete' },
       { value: 'abstract', label: 'Abstract' },
-      { value: 'interface', label: 'Interface' },
+      { value: 'interface', label: 'Interface', disabled: hasStructuralFeatures },
     ];
 
     options.forEach((option) => {
       const optionElement = document.createElement('option');
       optionElement.value = option.value;
       optionElement.textContent = option.label;
+      if (option.disabled) {
+        optionElement.disabled = true;
+        optionElement.textContent += ' (unavailable - class has structural features)';
+      }
       if (prop.value === option.value) {
         optionElement.selected = true;
       }
@@ -405,6 +428,7 @@ export class PropertiesPanel {
           this.onPropertyChanged(this.currentElement, 'interface', false);
           break;
         case 'interface':
+          // This should only be reachable if the class has no structural features
           this.onPropertyChanged(this.currentElement, 'abstract', false);
           this.onPropertyChanged(this.currentElement, 'interface', true);
           break;
@@ -428,6 +452,21 @@ export class PropertiesPanel {
     input.setAttribute('data-property', prop.name);
 
     input.addEventListener('change', () => {
+      // Special validation for many-to-many relationships (Rule #7)
+      if (input.checked && EUtils.isEReference(this.currentElement)) {
+        const ref = this.currentElement;
+        const opposite = ref.getEOpposite ? ref.getEOpposite() : null;
+        
+        if (opposite) {
+          const oppUpperBound = opposite.getUpperBound ? opposite.getUpperBound() : 1;
+          if (oppUpperBound === -1) {
+            alert("Cannot create many-to-many opposite relationships");
+            input.checked = false;
+            return;
+          }
+        }
+      }
+      
       // Update the upper bound based on checkbox state
       // Many-valued = -1, Single-valued = 1
       const upperBound = input.checked ? -1 : 1;
@@ -479,6 +518,37 @@ export class PropertiesPanel {
     select.addEventListener('change', () => {
       const selectedOption = prop.options?.find((o) => o.id === select.value);
       this.isUpdatingHeader = true;
+      
+      // Special validation for eOpposite property
+      if (prop.name === 'eOpposite' && selectedOption && EUtils.isEReference(this.currentElement)) {
+        const ref = this.currentElement;
+        const newOpposite = selectedOption.element;
+        
+        if (newOpposite) {
+          // Check for many-to-many (Rule #7)
+          const refUpperBound = ref.getUpperBound ? ref.getUpperBound() : 1;
+          const oppUpperBound = newOpposite.getUpperBound ? newOpposite.getUpperBound() : 1;
+          
+          if (refUpperBound === -1 && oppUpperBound === -1) {
+            alert("Cannot create many-to-many opposite relationships");
+            select.value = '';
+            this.isUpdatingHeader = false;
+            return;
+          }
+          
+          // Check for double containment (Rule #6)
+          const refContainment = ref.isContainment ? ref.isContainment() : false;
+          const oppContainment = newOpposite.isContainment ? newOpposite.isContainment() : false;
+          
+          if (refContainment && oppContainment) {
+            alert("Both sides of an opposite relationship cannot be containment");
+            select.value = '';
+            this.isUpdatingHeader = false;
+            return;
+          }
+        }
+      }
+      
       this.onPropertyChanged(
         this.currentElement,
         prop.name,
@@ -800,6 +870,11 @@ export class PropertiesPanel {
     for (const eClass of allClasses) {
       // Skip the exclude class (to avoid self-reference in super types)
       if (excludeClass && eClass === excludeClass) {
+        continue;
+      }
+      
+      // For super type selection, check for inheritance cycles (Rule #5)
+      if (excludeClass && ModelActions.wouldCreateInheritanceCycle(excludeClass, eClass)) {
         continue;
       }
 

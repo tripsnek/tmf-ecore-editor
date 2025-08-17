@@ -2,6 +2,7 @@ import { EPackage, EcoreStringParser, EcoreStringWriter, TUtils } from '@tripsne
 import { ModelTreeView } from './modelTreeView';
 import { PropertiesPanel } from './propertiesPanel';
 import { ModelActions } from './modelActions';
+import { EUtils } from './eUtils';
 
 declare const vscode: any;
 
@@ -421,6 +422,19 @@ export class EcoreEditorApp {
       // Always update the tree node label for any property change
       // This ensures real-time updates as the user types
       this.treeView.updateNodeLabel(element);
+      
+      // Special handling for parameter changes - update parent operation label
+      if (EUtils.isEParameter(element)) {
+        const operation = element.getEOperation ? element.getEOperation() : null;
+        if (operation) {
+          this.treeView.updateNodeLabel(operation);
+        }
+      }
+
+      // Special handling for operation arity changes
+      if (EUtils.isEOperation(element) && (property === 'upperBound' || property === 'multiplicity')) {
+        this.treeView.updateNodeLabel(element);
+      }
 
       // Only refresh the properties panel if it's NOT a text input update
       // The properties panel sets isUpdating flag when it's a text input
