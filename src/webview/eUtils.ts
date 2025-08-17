@@ -31,4 +31,20 @@ export class EUtils{
   public static isEEnumLiteral(element: any): boolean {
     return element && element.constructor.name.includes("EEnumLiteral");
   }
+
+  public static getIconForType(type: string): string {
+    const icons: { [key: string]: string } = {
+      root: 'codicon-file',
+      EPackage: 'codicon-package',
+      EClass: 'codicon-symbol-class',
+      EEnum: 'codicon-symbol-enum',
+      EAttribute: 'codicon-symbol-field',
+      EReference: 'codicon-arrow-right',
+      EOperation: 'codicon-gear',
+      EParameter: 'codicon-symbol-parameter',
+      EEnumLiteral: 'codicon-symbol-constant',
+    };
+    return icons[type] || 'codicon-circle-outline';
+  }
+
 }

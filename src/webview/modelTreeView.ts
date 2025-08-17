@@ -506,7 +506,7 @@ private createAttributeNode(attr: EAttribute): TreeNode {
 
     // Type icon
     const icon = document.createElement('i');
-    icon.className = `codicon ${this.getIconForType(node.type)}`;
+    icon.className = `codicon ${EUtils.getIconForType(node.type)}`;
     nodeContent.appendChild(icon);
 
     // Label with enhanced styling for EClass super type
@@ -806,17 +806,17 @@ private createAttributeNode(attr: EAttribute): TreeNode {
         items.push(
           {
             label: 'Add Class',
-            icon: 'codicon-symbol-class',
+            icon: EUtils.getIconForType('EClass'),
             action: () => this.addEClass(node),
           },
           {
             label: 'Add Enum',
-            icon: 'codicon-symbol-enum',
+            icon: EUtils.getIconForType('EEnum'),
             action: () => this.addEEnum(node),
           },
           {
             label: 'Add Sub-Package',
-            icon: 'codicon-package',
+            icon: EUtils.getIconForType('EPackage'),
             action: () => this.addSubPackage(node),
           },
         );
@@ -825,17 +825,17 @@ private createAttributeNode(attr: EAttribute): TreeNode {
         items.push(
           {
             label: 'Add Attribute',
-            icon: 'codicon-symbol-field',
+            icon: EUtils.getIconForType('EAttribute'),
             action: () => this.addAttribute(node),
           },
           {
             label: 'Add Reference',
-            icon: 'codicon-arrow-right',
+            icon: EUtils.getIconForType('EReference'),
             action: () => this.addReference(node),
           },
           {
             label: 'Add Operation',
-            icon: 'codicon-gear',
+            icon: EUtils.getIconForType('EOperation'),
             action: () => this.addOperation(node),
           },
         );
@@ -843,14 +843,14 @@ private createAttributeNode(attr: EAttribute): TreeNode {
       case 'EOperation':
         items.push({
           label: 'Add Parameter',
-          icon: 'codicon-symbol-parameter',
+          icon: EUtils.getIconForType('EParameter'),
           action: () => this.addParameter(node),
         });
         break;
       case 'EEnum':
         items.push({
           label: 'Add Literal',
-          icon: 'codicon-symbol-constant',
+          icon: EUtils.getIconForType('EEnumLiteral'),
           action: () => this.addEnumLiteral(node),
         });
         break;
@@ -1239,21 +1239,6 @@ private createAttributeNode(attr: EAttribute): TreeNode {
   // Helper methods
   private generateId(element: any): string {
     return `node_${Math.random().toString(36).substr(2, 9)}`;
-  }
-
-  private getIconForType(type: string): string {
-    const icons: { [key: string]: string } = {
-      root: 'codicon-file',
-      EPackage: 'codicon-package',
-      EClass: 'codicon-symbol-class',
-      EEnum: 'codicon-symbol-enum',
-      EAttribute: 'codicon-symbol-field',
-      EReference: 'codicon-arrow-right',
-      EOperation: 'codicon-gear',
-      EParameter: 'codicon-symbol-parameter',
-      EEnumLiteral: 'codicon-symbol-constant',
-    };
-    return icons[type] || 'codicon-circle-outline';
   }
 
   private getMultiplicity(feature: any): string {

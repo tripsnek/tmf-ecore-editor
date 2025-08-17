@@ -164,13 +164,13 @@ export class PropertiesPanel {
         actions.push(
           {
             label: 'Add Class',
-            icon: 'codicon-symbol-class',
+            icon: EUtils.getIconForType('EClass'),
             type: 'addClass',
           },
-          { label: 'Add Enum', icon: 'codicon-symbol-enum', type: 'addEnum' },
+          { label: 'Add Enum', icon: EUtils.getIconForType('EEnum'), type: 'addEnum' },
           {
             label: 'Add Sub-Package',
-            icon: 'codicon-package',
+            icon: EUtils.getIconForType('EPackage'),
             type: 'addSubPackage',
           },
         );
@@ -179,17 +179,17 @@ export class PropertiesPanel {
         actions.push(
           {
             label: 'Add Attribute',
-            icon: 'codicon-symbol-field',
+            icon: EUtils.getIconForType('EAttribute'),
             type: 'addAttribute',
           },
           {
             label: 'Add Reference',
-            icon: 'codicon-arrow-right',
+            icon: EUtils.getIconForType('EReference'),
             type: 'addReference',
           },
           {
             label: 'Add Operation',
-            icon: 'codicon-gear',
+            icon: EUtils.getIconForType('EOperation'),
             type: 'addOperation',
           },
         );
@@ -197,14 +197,14 @@ export class PropertiesPanel {
       case 'EOperation':
         actions.push({
           label: 'Add Parameter',
-          icon: 'codicon-symbol-parameter',
+          icon: EUtils.getIconForType('EParameter'),
           type: 'addParameter',
         });
         break;
       case 'EEnum':
         actions.push({
           label: 'Add Literal',
-          icon: 'codicon-symbol-constant',
+          icon: EUtils.getIconForType('EEnum'),
           type: 'addLiteral',
         });
         break;
