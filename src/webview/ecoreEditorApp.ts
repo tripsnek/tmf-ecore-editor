@@ -390,31 +390,9 @@ export class EcoreEditorApp {
     if (this.isUpdatingFromExternal) return;
 
     try {
-      // Handle special cases for type properties
-      if (property === 'eType' && value) {
-        // For primitive types, we need to handle them specially
-        const typeName = value.getName ? value.getName() : '';
-        if (
-          TUtils.PRIMITIVES.includes(typeName)
-        ) {
-          // For primitive types, we might need to create a proper reference
-          // This depends on your TMF implementation
-          // For now, we'll just set it directly
-          if (element.setEType) {
-            // You might need to get the actual type from Ecore package
-            // This is a simplified version
-            element.setEType(value);
-          }
-        } else {
-          // For class references, set directly
-          if (element.setEType) {
-            element.setEType(value);
-          }
-        }
-      } else {
-        // Update the model using the controller
-        ModelActions.updateProperty(element, property, value);
-      }
+
+      ModelActions.updateProperty(element, property, value);
+      
 
       // Immediately update the document in VSCode
       this.updateDocument();

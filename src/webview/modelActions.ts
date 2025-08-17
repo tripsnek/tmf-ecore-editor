@@ -608,20 +608,7 @@ export class ModelActions {
       case "eType":
         if (element.setEType) {
           // If this is a reference and we're changing the type, clear any opposite relationship (Rule #4)
-          if (EUtils.isEReference(element)) {
-            const ref = element as EReference;
-            const oldOpposite = ref.getEOpposite ? ref.getEOpposite() : null;
-            
-            if (oldOpposite) {
-              // Clear both sides of the opposite relationship
-              if (oldOpposite.setEOpposite) {
-                oldOpposite.setEOpposite(null);
-              }
-              if (ref.setEOpposite) {
-                ref.setEOpposite(null);
-              }
-            }
-          }
+          ModelActions.maybeClearEOppositesWhenETypeChanged(element);
           
           element.setEType(value);
         }
@@ -719,6 +706,23 @@ export class ModelActions {
           element.setDefaultValue(value);
         }
         break;
+    }
+  }
+
+  private static maybeClearEOppositesWhenETypeChanged(element: any) {
+    if (EUtils.isEReference(element)) {
+      const ref = element as EReference;
+      const oldOpposite = ref.getEOpposite ? ref.getEOpposite() : null;
+
+      if (oldOpposite) {
+        // Clear both sides of the opposite relationship
+        if (oldOpposite.setEOpposite) {
+          oldOpposite.setEOpposite(null);
+        }
+        if (ref.setEOpposite) {
+          ref.setEOpposite(null);
+        }
+      }
     }
   }
 
