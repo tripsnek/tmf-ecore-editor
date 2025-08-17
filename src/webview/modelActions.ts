@@ -14,6 +14,7 @@ import {
   EOperationImpl,
   EParameterImpl,
   EEnumLiteralImpl,
+  EObject,
 } from '@tripsnek/tmf';
 import { EUtils } from './eUtils';
 
@@ -133,8 +134,7 @@ export class ModelActions {
    */
   public static executeAction(
     element: any,
-    actionType: string,
-    parent?: any
+    actionType: string
   ): { newElement?: any; message: string; shouldFocusName?: boolean } {
     switch (actionType) {
       case 'addClass':
@@ -154,7 +154,7 @@ export class ModelActions {
       case 'addLiteral':
         return this.addEnumLiteral(element);
       case 'delete':
-        return this.deleteElement(element, parent);
+        return this.deleteElement(element);
       default:
         return { message: `Unknown action: ${actionType}` };
     }
@@ -168,6 +168,8 @@ export class ModelActions {
     const name = `Class${++this.classCounter}`;
     const eClass = new EClassImpl();
     eClass.setName(name);
+
+    //TODO: Would not have to do both if model was source generated
     pkg.getEClassifiers().add(eClass);
     eClass.setEPackage(pkg);
 
@@ -186,6 +188,8 @@ export class ModelActions {
     const name = `Enum${++this.enumCounter}`;
     const eEnum = new EEnumImpl();
     eEnum.setName(name);
+
+    //TODO: Would not have to do both if model was source generated
     pkg.getEClassifiers().add(eEnum);
     eEnum.setEPackage(pkg);
 
@@ -204,6 +208,8 @@ export class ModelActions {
     const name = `package${++this.packageCounter}`;
     const subPkg = new EPackageImpl(name, `http://www.example.org/${name}`);
     subPkg.setNsPrefix(name);
+
+    //TODO: Would not have to do both if model was source generated
     parentPkg.getESubPackages().add(subPkg);
     subPkg.setESuperPackage(parentPkg);
 
@@ -222,11 +228,12 @@ export class ModelActions {
     const name = `attribute${++this.attributeCounter}`;
     const attr = new EAttributeImpl();
     attr.setName(name);
-    
+
     // Set common defaults
     if (attr.setLowerBound) attr.setLowerBound(1);
     if (attr.setUpperBound) attr.setUpperBound(1);
-    
+
+    //TODO: Would not have to do both if model was source generated
     eClass.getEStructuralFeatures().add(attr);
     attr.setEContainingClass(eClass);
 
@@ -245,12 +252,17 @@ export class ModelActions {
     const name = `reference${++this.referenceCounter}`;
     const ref = new EReferenceImpl();
     ref.setName(name);
-    
+
+    // Set common defaults
+    if (ref.setLowerBound) ref.setLowerBound(1);
+    if (ref.setUpperBound) ref.setUpperBound(1);
+
     // For containment references, set resolveProxies to false by default
     if (ref.setResolveProxies) {
       ref.setResolveProxies(false);
     }
-    
+
+    //TODO: Would not have to do both if model was source generated
     eClass.getEStructuralFeatures().add(ref);
     ref.setEContainingClass(eClass);
 
@@ -269,6 +281,8 @@ export class ModelActions {
     const name = `operation${++this.operationCounter}`;
     const op = new EOperationImpl();
     op.setName(name);
+
+    //TODO: Would not have to do both if model was source generated
     eClass.getEOperations().add(op);
     op.setEContainingClass(eClass);
 
@@ -287,7 +301,10 @@ export class ModelActions {
     const name = `param${++this.parameterCounter}`;
     const param = new EParameterImpl();
     param.setName(name);
+
+    //TODO: Would not have to do both if model was source generated
     operation.getEParameters().add(param);
+    param.setEOperation(operation);
 
     return {
       newElement: param,
@@ -306,6 +323,8 @@ export class ModelActions {
     literal.setName(name);
     literal.setLiteral(name);
     literal.setValue(eEnum.getELiterals().size());
+
+    //TODO: Would not have to do both if model was source generated
     eEnum.getELiterals().add(literal);
     literal.setEEnum(eEnum);
 
@@ -316,13 +335,13 @@ export class ModelActions {
     };
   }
 
-  private static deleteElement(element: any, parent?: any): {
+  private static deleteElement(
+    element: any
+  ): {
     message: string;
   } {
-    if (!parent) {
-      parent = this.findParent(element);
-    }
 
+    const parent = element.eContainer();
     if (!parent) {
       return { message: 'Cannot delete: parent not found' };
     }

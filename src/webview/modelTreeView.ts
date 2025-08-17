@@ -812,10 +812,8 @@ export class ModelTreeView {
 
   // Unified execution method using shared module
   private executeAction(element: any, actionType: string): void {
-    const parent = element && actionType === 'delete' ? 
-      ModelActions.findParent(element, this.rootPackage) : null;
     
-    const result = ModelActions.executeAction(element, actionType, parent);
+    const result = ModelActions.executeAction(element, actionType);
     
     if (result.newElement) {
       // Handle the new element by adding it to the tree

@@ -295,12 +295,10 @@ public updateProperty(element: any, property: string, value: any): void {
   /**
    * Delete an element from the model
    */
-  public deleteElement(element: any, parent?: any): void {
+  public deleteElement(element: any): void {
     this.saveState();
 
-    if (!parent) {
-      parent = this.findParent(element);
-    }
+    const parent = element.eContainer();
 
     if (!parent) return;
 
@@ -378,68 +376,6 @@ public updateProperty(element: any, property: string, value: any): void {
     for (let i = 0; i < subPackages.size(); i++) {
       this.collectEnumsFromPackage(subPackages.get(i), enums);
     }
-  }
-
-  /**
-   * Find the parent of an element
-   */
-  private findParent(element: any): any {
-    if (!this.rootPackage) return null;
-
-    // Use eContainer if available
-    if (element.eContainer) {
-      return element.eContainer();
-    }
-
-    // Otherwise search the model
-    return this.searchForParent(this.rootPackage, element);
-  }
-
-  private searchForParent(current: any, target: any): any {
-    // Check packages
-    if (current.getESubPackages) {
-      const subPackages = current.getESubPackages();
-      for (let i = 0; i < subPackages.size(); i++) {
-        if (subPackages.get(i) === target) return current;
-        const found = this.searchForParent(subPackages.get(i), target);
-        if (found) return found;
-      }
-    }
-
-    // Check classifiers
-    if (current.getEClassifiers) {
-      const classifiers = current.getEClassifiers();
-      for (let i = 0; i < classifiers.size(); i++) {
-        const classifier = classifiers.get(i);
-        if (classifier === target) return current;
-
-        // Check class contents
-        if (EUtils.isEClass(classifier)) {
-          const eClass = classifier as EClass;
-
-          // Check structural features
-          const features = eClass.getEStructuralFeatures();
-          for (let j = 0; j < features.size(); j++) {
-            if (features.get(j) === target) return eClass;
-          }
-
-          // Check operations
-          const operations = eClass.getEOperations();
-          for (let j = 0; j < operations.size(); j++) {
-            const op = operations.get(j);
-            if (op === target) return eClass;
-
-            // Check parameters
-            const params = op.getEParameters();
-            for (let k = 0; k < params.size(); k++) {
-              if (params.get(k) === target) return op;
-            }
-          }
-        }
-      }
-    }
-
-    return null;
   }
 
   private removeFromList(list: any, element: any): void {

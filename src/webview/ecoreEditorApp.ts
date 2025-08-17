@@ -354,7 +354,7 @@ export class EcoreEditorApp {
   // Add new method to handle deleting elements from properties panel
   private onDeleteElement(element: any): void {
     // Find parent for the element
-    const parent = ModelActions.findParent(element, this.rootPackage);
+    const parent = element.eContainer();
     
     if (!parent) {
       this.showError('Cannot delete: parent element not found');
@@ -362,7 +362,7 @@ export class EcoreEditorApp {
     }
 
     // Execute delete action
-    const result = ModelActions.executeAction(element, 'delete', parent);
+    const result = ModelActions.executeAction(element, 'delete');
     
     // Refresh the tree
     this.treeView.refresh();
