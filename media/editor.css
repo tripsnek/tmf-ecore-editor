@@ -693,12 +693,12 @@ body {
 
 .properties-actions .toolbar-btn {
     padding: 4px 8px;
-    font-size: 11px;
+    font-size: 14px;
     display: flex;
     align-items: center;
     gap: 4px;
-    background: var(--vscode-button-secondaryBackground);
-    color: var(--vscode-button-secondaryForeground);
+    background: var(--vscode-button-background);
+    color: var(--vscode-button-foreground);
     border: 1px solid var(--vscode-button-border, transparent);
     border-radius: 2px;
     cursor: pointer;
@@ -706,15 +706,11 @@ body {
 }
 
 .properties-actions .toolbar-btn:hover {
-    background: var(--vscode-button-secondaryHoverBackground);
+    background: var(--vscode-button-hoverBackground);
 }
 
 .properties-actions .toolbar-btn:active {
     transform: translateY(1px);
-}
-
-.properties-actions .toolbar-btn i {
-    font-size: 12px;
 }
 
 /* Focused input field */
