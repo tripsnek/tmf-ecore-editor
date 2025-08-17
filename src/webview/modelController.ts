@@ -7,6 +7,7 @@ import {
   EOperation,
   EParameter,
 } from "@tripsnek/tmf";
+import { EUtils } from "./eUtils";
 
 /**
  * Controller for managing Ecore model operations
@@ -304,23 +305,23 @@ public updateProperty(element: any, property: string, value: any): void {
     if (!parent) return;
 
     // Remove from parent based on type
-    if (this.isEPackage(element)) {
+    if (EUtils.isEPackage(element)) {
       if (parent.getESubPackages) {
         this.removeFromList(parent.getESubPackages(), element);
       }
-    } else if (this.isEClass(element) || this.isEEnum(element)) {
+    } else if (EUtils.isEClass(element) || EUtils.isEEnum(element)) {
       if (parent.getEClassifiers) {
         this.removeFromList(parent.getEClassifiers(), element);
       }
-    } else if (this.isEAttribute(element) || this.isEReference(element)) {
+    } else if (EUtils.isEAttribute(element) || EUtils.isEReference(element)) {
       if (parent.getEStructuralFeatures) {
         this.removeFromList(parent.getEStructuralFeatures(), element);
       }
-    } else if (this.isEOperation(element)) {
+    } else if (EUtils.isEOperation(element)) {
       if (parent.getEOperations) {
         this.removeFromList(parent.getEOperations(), element);
       }
-    } else if (this.isEParameter(element)) {
+    } else if (EUtils.isEParameter(element)) {
       if (parent.getEParameters) {
         this.removeFromList(parent.getEParameters(), element);
       }
@@ -342,7 +343,7 @@ public updateProperty(element: any, property: string, value: any): void {
     const classifiers = pkg.getEClassifiers();
     for (let i = 0; i < classifiers.size(); i++) {
       const classifier = classifiers.get(i);
-      if (this.isEClass(classifier)) {
+      if (EUtils.isEClass(classifier)) {
         classes.push(classifier as EClass);
       }
     }
@@ -368,7 +369,7 @@ public updateProperty(element: any, property: string, value: any): void {
     const classifiers = pkg.getEClassifiers();
     for (let i = 0; i < classifiers.size(); i++) {
       const classifier = classifiers.get(i);
-      if (this.isEEnum(classifier)) {
+      if (EUtils.isEEnum(classifier)) {
         enums.push(classifier as EEnum);
       }
     }
@@ -413,7 +414,7 @@ public updateProperty(element: any, property: string, value: any): void {
         if (classifier === target) return current;
 
         // Check class contents
-        if (this.isEClass(classifier)) {
+        if (EUtils.isEClass(classifier)) {
           const eClass = classifier as EClass;
 
           // Check structural features
@@ -518,32 +519,5 @@ public updateProperty(element: any, property: string, value: any): void {
     return param;
   }
 
-  // Type checking helpers
-  private isEPackage(element: any): boolean {
-    return element && element.constructor.name.includes("Package");
-  }
 
-  private isEClass(element: any): boolean {
-    return element && element.constructor.name.includes("EClass");
-  }
-
-  private isEEnum(element: any): boolean {
-    return element && element.constructor.name.includes("EEnum");
-  }
-
-  private isEAttribute(element: any): boolean {
-    return element && element.constructor.name.includes("EAttribute");
-  }
-
-  private isEReference(element: any): boolean {
-    return element && element.constructor.name.includes("EReference");
-  }
-
-  private isEOperation(element: any): boolean {
-    return element && element.constructor.name.includes("EOperation");
-  }
-
-  private isEParameter(element: any): boolean {
-    return element && element.constructor.name.includes("EParameter");
-  }
 }

@@ -15,6 +15,7 @@ import {
   EParameterImpl,
   EEnumLiteralImpl,
 } from '@tripsnek/tmf';
+import { EUtils } from './eUtils';
 
 interface TreeNode {
   element: any;
@@ -254,9 +255,9 @@ export class ModelTreeView {
       const classifier = classifiers.get(i);
       let classifierNode: TreeNode;
 
-      if (this.isEClass(classifier)) {
+      if (EUtils.isEClass(classifier)) {
         classifierNode = this.createClassNode(classifier as any);
-      } else if (this.isEEnum(classifier)) {
+      } else if (EUtils.isEEnum(classifier)) {
         classifierNode = this.createEnumNode(classifier as any);
       } else {
         continue;
@@ -282,7 +283,7 @@ export class ModelTreeView {
     const classifiers = pkg.getEClassifiers();
     for (let i = 0; i < classifiers.size(); i++) {
       const classifier = classifiers.get(i);
-      if (this.isEClass(classifier)) {
+      if (EUtils.isEClass(classifier)) {
         classes.push(classifier as EClass);
       }
     }
@@ -643,25 +644,25 @@ private createAttributeNode(attr: EAttribute): TreeNode {
       // Update the label based on the element type
       const element = targetElement;
       
-      if (this.isEClass(element)) {
+      if (EUtils.isEClass(element)) {
         node.label = this.getClassLabelWithSuperType(element);
-      } else if (this.isEOperation(element)) {
+      } else if (EUtils.isEOperation(element)) {
         node.label = this.getOperationLabel(element);
-      } else if (this.isEAttribute(element)) {
+      } else if (EUtils.isEAttribute(element)) {
         const type = element.getEType() ? element.getEType().getName() : "void";
         const multiplicity = this.getMultiplicity(element);
         node.label = `${element.getName() || "unnamed"} : ${type}${multiplicity}`;
-      } else if (this.isEReference(element)) {
+      } else if (EUtils.isEReference(element)) {
         const type = element.getEType() ? element.getEType().getName() : "void";
         const multiplicity = this.getMultiplicity(element);
         const containment = element.isContainment ? element.isContainment() : false;
         const containmentText = containment ? " [containment]" : "";
         node.label = `${element.getName() || "unnamed"} : ${type}${multiplicity}${containmentText}`;
-      } else if (this.isEParameter(element)) {
+      } else if (EUtils.isEParameter(element)) {
         const type = element.getEType() ? element.getEType().getName() : "void";
         const multiplicity = this.getMultiplicity(element);
         node.label = `${element.getName() || "unnamed"} : ${type}${multiplicity}`;
-      } else if (this.isEEnumLiteral(element)) {
+      } else if (EUtils.isEEnumLiteral(element)) {
         const name = element.getName ? element.getName() : 
                      element.getLiteral ? element.getLiteral() : "unnamed";
         const value = element.getValue ? element.getValue() : 0;
@@ -1259,13 +1260,18 @@ private createAttributeNode(attr: EAttribute): TreeNode {
     const lower = feature.getLowerBound ? feature.getLowerBound() : 0;
     const upper = feature.getUpperBound ? feature.getUpperBound() : 1;
 
-    if (lower === 0 && upper === 1) return '';
-    if (lower === 1 && upper === 1) return '';
-    if (lower === 0 && upper === -1) return '[*]';
-    if (lower === 1 && upper === -1) return '[1..*]';
-    if (upper === -1) return `[${lower}..*]`;
-    if (lower === upper) return `[${lower}]`;
-    return `[${lower}..${upper}]`;
+    //simple multiplicity: one or many
+    if(upper == -1) return `[*]`;
+    return '';
+
+    //TODO: if we ever do more complicated multiplicity, we can switch to these
+    // if (lower === 0 && upper === 1) return '';
+    // if (lower === 1 && upper === 1) return '';
+    // if (lower === 0 && upper === -1) return '[*]';
+    // if (lower === 1 && upper === -1) return '[1..*]';
+    // if (upper === -1) return `[${lower}..*]`;
+    // if (lower === upper) return `[${lower}]`;
+    // return `[${lower}..${upper}]`;
   }
 
   private getOperationLabel(op: EOperation): string {
@@ -1278,37 +1284,5 @@ private createAttributeNode(attr: EAttribute): TreeNode {
     }
     const returnType = op.getEType() ? op.getEType().getName() : 'void';
     return `${op.getName() || 'unnamed'}(${paramStrings.join(', ')}): ${returnType}`;
-  }
-
-  private isEClass(element: any): boolean {
-    return element && element.constructor.name.includes("EClass");
-  }
-
-  private isEEnum(element: any): boolean {
-    return element && element.constructor.name.includes("EEnum");
-  }
-
-  private isEAttribute(element: any): boolean {
-    return element && element.constructor.name.includes("EAttribute");
-  }
-
-  private isEReference(element: any): boolean {
-    return element && element.constructor.name.includes("EReference");
-  }
-
-  private isEOperation(element: any): boolean {
-    return element && element.constructor.name.includes("EOperation");
-  }
-
-  private isEParameter(element: any): boolean {
-    return element && element.constructor.name.includes("EParameter");
-  }
-
-  private isEEnumLiteral(element: any): boolean {
-    return element && element.constructor.name.includes("EEnumLiteral");
-  }
-
-  private isEPackage(element: any): boolean {
-    return element && element.constructor.name.includes("EPackage");
   }
 }

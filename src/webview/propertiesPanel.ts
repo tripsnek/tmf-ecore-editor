@@ -1,3 +1,5 @@
+import { EUtils } from "./eUtils";
+
 interface PropertyDescriptor {
   name: string;
   label: string;
@@ -597,7 +599,7 @@ export class PropertiesPanel {
     }
 
     // Type-specific properties
-    if (this.isEPackage(element)) {
+    if (EUtils.isEPackage(element)) {
       properties.push(
         {
           name: 'nsURI',
@@ -612,7 +614,7 @@ export class PropertiesPanel {
           value: element.getNsPrefix ? element.getNsPrefix() : '',
         },
       );
-    } else if (this.isEClass(element)) {
+    } else if (EUtils.isEClass(element)) {
       // Determine current class type based on abstract and interface values
       const isAbstract = element.isAbstract ? element.isAbstract() : false;
       const isInterface = element.isInterface ? element.isInterface() : false;
@@ -639,7 +641,7 @@ export class PropertiesPanel {
           options: this.getAvailableClasses(element),
         },
       );
-    } else if (this.isEAttribute(element)) {
+    } else if (EUtils.isEAttribute(element)) {
       // Get current type for EAttribute
       const currentType = element.getEType ? element.getEType() : null;
       const upperBound = element.getUpperBound ? element.getUpperBound() : 1;
@@ -678,7 +680,7 @@ export class PropertiesPanel {
           value: element.isTransient ? element.isTransient() : false,
         },
       );
-    } else if (this.isEReference(element)) {
+    } else if (EUtils.isEReference(element)) {
       // Get current type for EReference
       const currentType = element.getEType ? element.getEType() : null;
       const upperBound = element.getUpperBound ? element.getUpperBound() : 1;
@@ -724,7 +726,7 @@ export class PropertiesPanel {
           value: element.isTransient ? element.isTransient() : false,
         },
       );
-    } else if (this.isEOperation(element)) {
+    } else if (EUtils.isEOperation(element)) {
       const upperBound = element.getUpperBound ? element.getUpperBound() : 1;
       properties.push(
         {
@@ -744,7 +746,7 @@ export class PropertiesPanel {
           value: upperBound === -1, // true if many-valued, false if single-valued
         },
       );
-    } else if (this.isEParameter(element)) {
+    } else if (EUtils.isEParameter(element)) {
       const upperBound = element.getUpperBound ? element.getUpperBound() : 1;
       const lowerBound = element.getLowerBound ? element.getLowerBound() : 0;
 
@@ -766,7 +768,7 @@ export class PropertiesPanel {
           value: upperBound === -1, // true if many-valued, false if single-valued
         },
       );
-    } else if (this.isEEnumLiteral(element)) {
+    } else if (EUtils.isEEnumLiteral(element)) {
       properties.push(
         {
           name: 'literal',
@@ -916,32 +918,4 @@ export class PropertiesPanel {
     return icons[typeName] || 'codicon-circle-outline';
   }
 
-  // Type checking helpers
-  private isEPackage(element: any): boolean {
-    return element && element.constructor.name.includes('Package');
-  }
-
-  private isEClass(element: any): boolean {
-    return element && element.constructor.name.includes('EClass');
-  }
-
-  private isEAttribute(element: any): boolean {
-    return element && element.constructor.name.includes('EAttribute');
-  }
-
-  private isEReference(element: any): boolean {
-    return element && element.constructor.name.includes('EReference');
-  }
-
-  private isEOperation(element: any): boolean {
-    return element && element.constructor.name.includes('EOperation');
-  }
-
-  private isEParameter(element: any): boolean {
-    return element && element.constructor.name.includes('EParameter');
-  }
-
-  private isEEnumLiteral(element: any): boolean {
-    return element && element.constructor.name.includes('EEnumLiteral');
-  }
 }
