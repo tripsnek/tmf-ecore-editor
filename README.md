@@ -190,7 +190,7 @@ Contributions are welcome! Please ensure:
 
 ## License
 
-[Your License Here]
+MIT
 
 ## Credits
 

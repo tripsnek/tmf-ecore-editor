@@ -1,7 +1,7 @@
 {
   "name": "tmf-ecore-editor",
   "displayName": "TMF Ecore Editor",
-  "description": "Visual editor for Eclipse Ecore models",
+  "description": "Visual editor for Eclipse Ecore models - for use with @tripsnek/tmf library",
   "icon": "media/icon.png",
   "version": "0.1.0",
   "publisher": "tripsnek",
