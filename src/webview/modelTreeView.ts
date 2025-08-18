@@ -990,7 +990,7 @@ export class ModelTreeView {
       const type = param.getEType() ? param.getEType().getName() : 'void';
       paramStrings.push(`${param.getName()}: ${type}`);
     }
-    const returnType = op.getEType() ? op.getEType().getName() : 'void';
+    const returnType = op.getEType() ? (op.getEType().getName() + (op.isMany() ? '[*]' : '')) : 'void';
     return `${op.getName() || 'unnamed'}(${paramStrings.join(', ')}): ${returnType}`;
   }
 }
