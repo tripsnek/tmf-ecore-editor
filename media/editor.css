@@ -855,3 +855,82 @@ body {
 .add-btn:hover {
     background: var(--vscode-button-hoverBackground);
 }
+
+/* Add these styles to your editor.css file */
+
+.input-with-button {
+    display: flex;
+    gap: 4px;
+    align-items: center;
+}
+
+.input-with-button .form-input {
+    flex: 1;
+    margin: 0;
+}
+
+.browse-btn {
+    background: var(--vscode-button-background);
+    color: var(--vscode-button-foreground);
+    border: 1px solid var(--vscode-button-border, transparent);
+    padding: 6px 8px;
+    cursor: pointer;
+    border-radius: 2px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 32px;
+    height: 28px; /* Match the input height */
+    transition: background-color 0.1s ease;
+}
+
+.browse-btn:hover {
+    background: var(--vscode-button-hoverBackground);
+}
+
+.browse-btn:active {
+    background: var(--vscode-button-hoverBackground);
+    transform: translateY(1px);
+}
+
+.browse-btn i {
+    font-size: 14px;
+}
+
+/* Ensure the form group maintains proper spacing */
+.form-group {
+    margin-bottom: 16px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 4px;
+    font-weight: 500;
+    color: var(--vscode-foreground);
+}
+
+.form-input {
+    width: 100%;
+    padding: 6px 8px;
+    border: 1px solid var(--vscode-input-border);
+    background: var(--vscode-input-background);
+    color: var(--vscode-input-foreground);
+    border-radius: 2px;
+    font-family: inherit;
+    font-size: 13px;
+    height: 28px;
+    box-sizing: border-box;
+}
+
+.form-input:focus {
+    outline: none;
+    border-color: var(--vscode-focusBorder);
+    box-shadow: 0 0 0 1px var(--vscode-focusBorder);
+}
+
+.form-help {
+    margin-top: 4px;
+    font-size: 11px;
+    color: var(--vscode-descriptionForeground);
+    line-height: 1.4;
+}

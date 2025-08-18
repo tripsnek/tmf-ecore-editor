@@ -47,102 +47,128 @@ export class EcoreEditorProvider implements vscode.CustomTextEditorProvider {
         // Set up the webview content
         webviewPanel.webview.html = this.getHtmlForWebview(webviewPanel.webview, document);
 
-        // Handle messages from the webview
-        console.log('Setting up message handling');
-        webviewPanel.webview.onDidReceiveMessage(
-            async (message) => {
-                console.log('onDidReceiveMessage ' + message.command);
-                switch (message.command) {
-                    case 'ready':
-                        console.log('preparing to send xmlAsJson to webview');
-                        // Send initial model data to webview
-                        if (rootPackage) {
-                            webviewPanel.webview.postMessage({
-                                type: 'loadModel',
-                                content: xmlAsJson,
-                                fileName: path.basename(document.fileName)
-                            });
-                        }
-                        break;
-                    
-                    case 'updateDocument':
-                        // Update the document with new model content (XML)
-                        // This is the immediate update when properties change
-                        console.log('Updating document with XML content');
-                        updatingFromWebview = true;
-                        await this.updateTextDocument(document, message.content);
-                        updatingFromWebview = false;
-                        break;
-                    
-                    case 'generateCode':
-                        // Generate source code
-                        try {
-                            const { overwriteImplFiles, outputPath } = message;
-                            console.log(`Generating code: overwrite=${overwriteImplFiles}, output=${outputPath || 'default'}`);
-                            
-                            // Call the generation method
-                            await this.runSourceCodeGeneration(
-                                document.fileName,
-                                overwriteImplFiles,
-                                outputPath || undefined
-                            );
-                            
-                            // Send success message back to webview
-                            webviewPanel.webview.postMessage({
-                                type: 'generationComplete',
-                                success: true,
-                                message: `Source code generated successfully${outputPath ? ` to ${outputPath}` : ''}`
-                            });
-                            
-                            vscode.window.showInformationMessage(
-                                `Source code generated successfully${outputPath ? ` to ${outputPath}` : ''}`
-                            );
-                        } catch (error) {
-                            console.error('Generation failed:', error);
-                            
-                            // Send error message back to webview
-                            webviewPanel.webview.postMessage({
-                                type: 'generationComplete',
-                                success: false,
-                                message: `Failed to generate source code: ${error}`
-                            });
-                            
-                            vscode.window.showErrorMessage(
-                                `Failed to generate source code: ${error}`
-                            );
-                        }
-                        break;
-                    
-                    case 'showMessage':
-                        vscode.window.showInformationMessage(message.text);
-                        break;
-                    
-                    case 'showError':
-                        vscode.window.showErrorMessage(message.text);
-                        break;
-                    
-                    case 'getModel':
-                        // Re-parse and send current model
-                        try {
-                            const parser = new EcoreParser();
-                            const xmlAsJsonNew = JSON.stringify(parser.xmlToJs(document.getText()));
-                            webviewPanel.webview.postMessage({
-                                type: 'modelData',
-                                content: xmlAsJsonNew
-                            });
-                        } catch (error) {
-                            webviewPanel.webview.postMessage({
-                                type: 'error',
-                                message: `Failed to parse model: ${error}`
-                            });
-                        }
-                        break;
+ // Handle messages from the webview
+console.log('Setting up message handling');
+webviewPanel.webview.onDidReceiveMessage(
+    async (message) => {
+        console.log('onDidReceiveMessage ' + message.command);
+        switch (message.command) {
+            case 'ready':
+                console.log('preparing to send xmlAsJson to webview');
+                // Send initial model data to webview
+                if (rootPackage) {
+                    webviewPanel.webview.postMessage({
+                        type: 'loadModel',
+                        content: xmlAsJson,
+                        fileName: path.basename(document.fileName)
+                    });
                 }
-            },
-            undefined,
-            this.context.subscriptions
-        );
-
+                break;
+            
+            case 'updateDocument':
+                // Update the document with new model content (XML)
+                // This is the immediate update when properties change
+                console.log('Updating document with XML content');
+                updatingFromWebview = true;
+                await this.updateTextDocument(document, message.content);
+                updatingFromWebview = false;
+                break;
+            
+            case 'browseOutputFolder':
+                // Handle folder browse request
+                try {
+                    const selectedFolders = await vscode.window.showOpenDialog({
+                        canSelectFiles: false,
+                        canSelectFolders: true,
+                        canSelectMany: false,
+                        defaultUri: vscode.Uri.file(path.dirname(document.fileName)),
+                        openLabel: 'Select Output Folder'
+                    });
+                    
+                    if (selectedFolders && selectedFolders.length > 0) {
+                        const selectedPath = selectedFolders[0].fsPath;
+                        
+                        // Send the selected folder path back to the webview
+                        webviewPanel.webview.postMessage({
+                            type: 'folderSelected',
+                            folderPath: selectedPath
+                        });
+                    }
+                    // If user cancels, we don't send anything back
+                } catch (error) {
+                    console.error('Error opening folder dialog:', error);
+                    vscode.window.showErrorMessage(`Failed to open folder dialog: ${error}`);
+                }
+                break;
+                
+            case 'generateCode':
+                // Generate source code
+                try {
+                    const { overwriteImplFiles, outputPath } = message;
+                    console.log(`Generating code: overwrite=${overwriteImplFiles}, output=${outputPath || 'default'}`);
+                    
+                    // Call the generation method
+                    await this.runSourceCodeGeneration(
+                        document.fileName,
+                        overwriteImplFiles,
+                        outputPath || undefined
+                    );
+                    
+                    // Send success message back to webview
+                    webviewPanel.webview.postMessage({
+                        type: 'generationComplete',
+                        success: true,
+                        message: `Source code generated successfully${outputPath ? ` to ${outputPath}` : ''}`
+                    });
+                    
+                    vscode.window.showInformationMessage(
+                        `Source code generated successfully${outputPath ? ` to ${outputPath}` : ''}`
+                    );
+                } catch (error) {
+                    console.error('Generation failed:', error);
+                    
+                    // Send error message back to webview
+                    webviewPanel.webview.postMessage({
+                        type: 'generationComplete',
+                        success: false,
+                        message: `Failed to generate source code: ${error}`
+                    });
+                    
+                    vscode.window.showErrorMessage(
+                        `Failed to generate source code: ${error}`
+                    );
+                }
+                break;
+            
+            case 'showMessage':
+                vscode.window.showInformationMessage(message.text);
+                break;
+            
+            case 'showError':
+                vscode.window.showErrorMessage(message.text);
+                break;
+            
+            case 'getModel':
+                // Re-parse and send current model
+                try {
+                    const parser = new EcoreParser();
+                    const xmlAsJsonNew = JSON.stringify(parser.xmlToJs(document.getText()));
+                    webviewPanel.webview.postMessage({
+                        type: 'modelData',
+                        content: xmlAsJsonNew
+                    });
+                } catch (error) {
+                    webviewPanel.webview.postMessage({
+                        type: 'error',
+                        message: `Failed to parse model: ${error}`
+                    });
+                }
+                break;
+        }
+    },
+    undefined,
+    this.context.subscriptions
+);
         // Listen for document changes from outside the webview
         const changeDocumentSubscription = vscode.workspace.onDidChangeTextDocument(e => {
             if (e.document.uri.toString() === document.uri.toString()) {
