@@ -1,5 +1,6 @@
 import { EUtils } from "./eUtils";
 import { ModelActions } from "./modelActions";
+import { ModelTreeView } from "./modelTreeView";
 
 interface PropertyDescriptor {
   name: string;
@@ -25,7 +26,7 @@ export class PropertiesPanel {
     property: string,
     value: any,
   ) => void;
-  private treeView: any; // Reference to tree view for getting all classes
+  private treeView: ModelTreeView; // Reference to tree view for getting all classes
   private onAddChild: (element: any, childType: string) => void; // Callback for adding children
   private onDeleteElement: (element: any) => void; // Callback for deleting element
   private isUpdatingHeader: boolean = false; // Flag to prevent rebuilding during header updates
@@ -911,7 +912,7 @@ export class PropertiesPanel {
     return properties;
   }
 
-  private getAvailableClasses(excludeClass?: any, currentType?: any): any[] {
+  private getAvailableClasses(excludeClass?: any, currentType?: any, allowEnums?: boolean): any[] {
     // Get all EClasses from the tree view
     if (!this.treeView || !this.treeView.getAllClasses) {
       return [];
