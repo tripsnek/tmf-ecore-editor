@@ -79,11 +79,13 @@ export class PropertiesPanel {
 
     // Get actions from shared module
     const actions = ModelActions.getActionsForElement(element);
-    
+
     // Filter out separator and delete action for the button bar
-    const addActions = actions.filter(a => a.type !== 'separator' && a.type !== 'delete');
-    const hasDelete = actions.some(a => a.type === 'delete');
-    
+    const addActions = actions.filter(
+      (a) => a.type !== 'separator' && a.type !== 'delete',
+    );
+    const hasDelete = actions.some((a) => a.type === 'delete');
+
     if (addActions.length > 0 || hasDelete) {
       const actionsContainer = document.createElement('div');
       actionsContainer.className = 'properties-actions';
@@ -317,18 +319,22 @@ export class PropertiesPanel {
     input.setAttribute('data-property', prop.name);
 
     let disabledReason = '';
-    
+
     // Check if this checkbox should be disabled based on constraints
-    if (prop.name === 'containment' && !input.checked && EUtils.isEReference(this.currentElement)) {
+    if (
+      prop.name === 'containment' &&
+      !input.checked &&
+      EUtils.isEReference(this.currentElement)
+    ) {
       const ref = this.currentElement;
       const opposite = ref.getEOpposite ? ref.getEOpposite() : null;
-      
+
       if (opposite && opposite.isContainment && opposite.isContainment()) {
         input.disabled = true;
         disabledReason = 'Cannot enable: opposite is already containment';
       }
     }
-    
+
     // Set readonly if specified
     if (prop.readOnly) {
       input.disabled = true;
@@ -347,16 +353,17 @@ export class PropertiesPanel {
     }
 
     container.appendChild(input);
-    
+
     // Add disabled reason message if needed
     if (disabledReason) {
       const helpText = document.createElement('span');
       helpText.className = 'property-help-text';
-      helpText.style.cssText = 'color: var(--vscode-descriptionForeground); font-size: 11px; margin-left: 8px;';
+      helpText.style.cssText =
+        'color: var(--vscode-descriptionForeground); font-size: 11px; margin-left: 8px;';
       helpText.textContent = disabledReason;
       container.appendChild(helpText);
     }
-    
+
     return container;
   }
 
@@ -406,15 +413,23 @@ export class PropertiesPanel {
     select.setAttribute('data-property', prop.name);
 
     // Check if the class has structural features
-    const hasStructuralFeatures = this.currentElement && EUtils.isEClass(this.currentElement) &&
-      ((this.currentElement.getEAttributes && this.currentElement.getEAttributes().size() > 0) ||
-       (this.currentElement.getEReferences && this.currentElement.getEReferences().size() > 0));
+    const hasStructuralFeatures =
+      this.currentElement &&
+      EUtils.isEClass(this.currentElement) &&
+      ((this.currentElement.getEAttributes &&
+        this.currentElement.getEAttributes().size() > 0) ||
+        (this.currentElement.getEReferences &&
+          this.currentElement.getEReferences().size() > 0));
 
     // Add options for class type (Concrete/Abstract/Interface)
     const options = [
       { value: 'concrete', label: 'Concrete' },
       { value: 'abstract', label: 'Abstract' },
-      { value: 'interface', label: 'Interface', disabled: hasStructuralFeatures },
+      {
+        value: 'interface',
+        label: 'Interface',
+        disabled: hasStructuralFeatures,
+      },
     ];
 
     options.forEach((option) => {
@@ -423,7 +438,8 @@ export class PropertiesPanel {
       optionElement.textContent = option.label;
       if (option.disabled) {
         optionElement.disabled = true;
-        optionElement.textContent += ' (unavailable - class has structural features)';
+        optionElement.textContent +=
+          ' (unavailable - class has structural features)';
       }
       if (prop.value === option.value) {
         optionElement.selected = true;
@@ -454,7 +470,7 @@ export class PropertiesPanel {
       }
 
       this.isUpdatingHeader = false;
-      
+
       // Refresh the properties panel to update the action buttons
       setTimeout(() => {
         this.showProperties(this.currentElement);
@@ -475,21 +491,24 @@ export class PropertiesPanel {
     input.setAttribute('data-property', prop.name);
 
     let disabledReason = '';
-    
+
     // Check if this checkbox should be disabled based on constraints
     if (!input.checked && EUtils.isEReference(this.currentElement)) {
       const ref = this.currentElement;
       const opposite = ref.getEOpposite ? ref.getEOpposite() : null;
-      
+
       if (opposite) {
-        const oppUpperBound = opposite.getUpperBound ? opposite.getUpperBound() : 1;
+        const oppUpperBound = opposite.getUpperBound
+          ? opposite.getUpperBound()
+          : 1;
         if (oppUpperBound === -1) {
           input.disabled = true;
-          disabledReason = 'Cannot enable: would create many-to-many relationship, which does not support eOpposites.';
+          disabledReason =
+            'Cannot enable: would create many-to-many relationship, which does not support eOpposites.';
         }
       }
     }
-    
+
     // Set readonly if specified
     if (prop.readOnly) {
       input.disabled = true;
@@ -507,16 +526,17 @@ export class PropertiesPanel {
     }
 
     container.appendChild(input);
-    
+
     // Add disabled reason message if needed
     if (disabledReason) {
       const helpText = document.createElement('span');
       helpText.className = 'property-help-text';
-      helpText.style.cssText = 'color: var(--vscode-descriptionForeground); font-size: 11px; margin-left: 8px;';
+      helpText.style.cssText =
+        'color: var(--vscode-descriptionForeground); font-size: 11px; margin-left: 8px;';
       helpText.textContent = disabledReason;
       container.appendChild(helpText);
     }
-    
+
     return container;
   }
 
@@ -540,33 +560,42 @@ export class PropertiesPanel {
       prop.options.forEach((option) => {
         const optionElement = document.createElement('option');
         optionElement.value = option.id;
-        
+
         // Special validation for eOpposite options
-        if (prop.name === 'eOpposite' && EUtils.isEReference(this.currentElement)) {
+        if (
+          prop.name === 'eOpposite' &&
+          EUtils.isEReference(this.currentElement)
+        ) {
           const ref = this.currentElement;
           const potentialOpposite = option.element;
-          
+
           if (potentialOpposite) {
             let disabledReason = '';
-            
+
             // Check for many-to-many (Rule #7)
             const refUpperBound = ref.getUpperBound ? ref.getUpperBound() : 1;
-            const oppUpperBound = potentialOpposite.getUpperBound ? potentialOpposite.getUpperBound() : 1;
-            
+            const oppUpperBound = potentialOpposite.getUpperBound
+              ? potentialOpposite.getUpperBound()
+              : 1;
+
             if (refUpperBound === -1 && oppUpperBound === -1) {
               disabledReason = ' (unavailable - would create many-to-many)';
               optionElement.disabled = true;
             }
-            
+
             // Check for double containment (Rule #6)
-            const refContainment = ref.isContainment ? ref.isContainment() : false;
-            const oppContainment = potentialOpposite.isContainment ? potentialOpposite.isContainment() : false;
-            
+            const refContainment = ref.isContainment
+              ? ref.isContainment()
+              : false;
+            const oppContainment = potentialOpposite.isContainment
+              ? potentialOpposite.isContainment()
+              : false;
+
             if (refContainment && oppContainment) {
               disabledReason = ' (unavailable - both are containment)';
               optionElement.disabled = true;
             }
-            
+
             optionElement.textContent = option.label + disabledReason;
           } else {
             optionElement.textContent = option.label;
@@ -574,7 +603,7 @@ export class PropertiesPanel {
         } else {
           optionElement.textContent = option.label;
         }
-        
+
         // Check if current value matches the option
         if (
           prop.value &&
@@ -593,17 +622,20 @@ export class PropertiesPanel {
     select.addEventListener('change', () => {
       const selectedOption = prop.options?.find((o) => o.id === select.value);
       this.isUpdatingHeader = true;
-      
+
       this.onPropertyChanged(
         this.currentElement,
         prop.name,
         selectedOption ? selectedOption.element : null,
       );
       this.isUpdatingHeader = false;
-      
+
       // If this is an eOpposite or eType change on a reference, refresh properties
       // to update available opposites for other references
-      if (prop.name === 'eOpposite' || (prop.name === 'eType' && EUtils.isEReference(this.currentElement))) {
+      if (
+        prop.name === 'eOpposite' ||
+        (prop.name === 'eType' && EUtils.isEReference(this.currentElement))
+      ) {
         setTimeout(() => {
           if (!this.isUpdatingHeader) {
             this.showProperties(this.currentElement);
@@ -768,7 +800,10 @@ export class PropertiesPanel {
           label: 'Type',
           type: 'reference',
           value: currentType,
-          options: this.getAvailableDataTypes(currentType),
+          options: [
+            ...this.getAvailableDataTypes(currentType),
+            ...this.getAvailableEnums(),
+          ],
         },
         {
           name: 'multiplicity',
@@ -800,12 +835,19 @@ export class PropertiesPanel {
       const currentType = element.getEType ? element.getEType() : null;
       const upperBound = element.getUpperBound ? element.getUpperBound() : 1;
       const lowerBound = element.getLowerBound ? element.getLowerBound() : 0;
-      const isContainment = element.isContainment ? element.isContainment() : false;
-      
+      const isContainment = element.isContainment
+        ? element.isContainment()
+        : false;
+
       // Check if containment can be enabled
       let containmentReadOnly = false;
       const opposite = element.getEOpposite ? element.getEOpposite() : null;
-      if (!isContainment && opposite && opposite.isContainment && opposite.isContainment()) {
+      if (
+        !isContainment &&
+        opposite &&
+        opposite.isContainment &&
+        opposite.isContainment()
+      ) {
         containmentReadOnly = true;
       }
 
@@ -861,6 +903,7 @@ export class PropertiesPanel {
           options: [
             ...this.getAvailableDataTypes(),
             ...this.getAvailableClasses(),
+            ...this.getAvailableEnums(),
           ],
         },
         {
@@ -883,6 +926,7 @@ export class PropertiesPanel {
           options: [
             ...this.getAvailableDataTypes(),
             ...this.getAvailableClasses(),
+            ...this.getAvailableEnums(),
           ],
         },
         {
@@ -893,7 +937,8 @@ export class PropertiesPanel {
         },
       );
     } else if (EUtils.isEEnumLiteral(element)) {
-      properties.push(
+      properties
+        .push
         // {
         //   name: 'literal',
         //   label: 'Literal',
@@ -906,13 +951,17 @@ export class PropertiesPanel {
         //   type: 'number',
         //   value: element.getValue ? element.getValue() : 0,
         // },
-      );
+        ();
     }
 
     return properties;
   }
 
-  private getAvailableClasses(excludeClass?: any, currentType?: any, allowEnums?: boolean): any[] {
+  private getAvailableClasses(
+    excludeClass?: any,
+    currentType?: any,
+    allowEnums?: boolean,
+  ): any[] {
     // Get all EClasses from the tree view
     if (!this.treeView || !this.treeView.getAllClasses) {
       return [];
@@ -926,9 +975,12 @@ export class PropertiesPanel {
       if (excludeClass && eClass === excludeClass) {
         continue;
       }
-      
+
       // For super type selection, check for inheritance cycles (Rule #5)
-      if (excludeClass && ModelActions.wouldCreateInheritanceCycle(excludeClass, eClass)) {
+      if (
+        excludeClass &&
+        ModelActions.wouldCreateInheritanceCycle(excludeClass, eClass)
+      ) {
         continue;
       }
 
@@ -937,6 +989,27 @@ export class PropertiesPanel {
         id: id,
         label: eClass.getName() || 'unnamed',
         element: eClass,
+      });
+    }
+
+    return options;
+  }
+
+  private getAvailableEnums(): any[] {
+    // Get all EEnums from the tree view
+    if (!this.treeView || !this.treeView.getAllEnums) {
+      return [];
+    }
+
+    const allEnums = this.treeView.getAllEnums();
+    const options = [];
+
+    for (const eEnum of allEnums) {
+      const id = `enum_${Math.random().toString(36).substr(2, 9)}`;
+      options.push({
+        id: id,
+        label: eEnum.getName() || 'unnamed',
+        element: eEnum,
       });
     }
 
