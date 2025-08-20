@@ -271,9 +271,9 @@ export class ModelActions {
     if (ref.setUpperBound) ref.setUpperBound(1);
 
     // For containment references, set resolveProxies to false by default
-    if (ref.setResolveProxies) {
-      ref.setResolveProxies(false);
-    }
+    // if (ref.setResolveProxies) {
+    //   ref.setResolveProxies(false);
+    // }
 
     //TODO: Would not have to do both if model was source generated
     eClass.getEStructuralFeatures().add(ref);
@@ -683,11 +683,11 @@ export class ModelActions {
         }
         break;
 
-      case "resolveProxies":
-        if (element.setResolveProxies) {
-          element.setResolveProxies(value);
-        }
-        break;
+      // case "resolveProxies":
+      //   if (element.setResolveProxies) {
+      //     element.setResolveProxies(value);
+      //   }
+      //   break;
 
       case "changeable":
         if (element.setChangeable) {
