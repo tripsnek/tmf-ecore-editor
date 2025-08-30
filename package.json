@@ -2,6 +2,10 @@
   "name": "tmf-ecore-editor",
   "displayName": "TMF Ecore Editor",
   "description": "Visual editor for Eclipse Ecore models - for use with @tripsnek/tmf library",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/tripsnek/tmf-ecore-editor"
+  },  
   "icon": "media/icon.png",
   "version": "0.1.0",
   "publisher": "tripsnek",
@@ -58,7 +62,7 @@
     "webpack-cli": "^5.0.0"
   },
   "dependencies": {
-    "@tripsnek/tmf": "^1.1.23",
+    "@tripsnek/tmf": "^1.1.33",
     "@vscode/codicons": "^0.0.33",
     "uuid": "^11.1.0"
   }
