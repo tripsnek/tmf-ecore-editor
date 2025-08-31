@@ -11,6 +11,12 @@ A visual editor for creating and editing Ecore metamodels in VSCode, designed fo
 - **TypeScript Code Generation** - Generate type-safe code with one click
 - **Core EMF Support** - Packages, classes, enums, attributes, operations, enums, and (most notably) references with notions of containment and bi-directionality that are enforced by generated code at runtime. 
 
+## A Quick Demo video
+
+https://github.com/user-attachments/assets/05cd17a7-ef66-43ab-8929-f6c18268a59b
+
+Quick demonstration of adding types/features to an ecore model and generating code in a full stack reflective application.
+
 ## Quick Start
 
 1. **Install TMF**
