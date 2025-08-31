@@ -112,10 +112,9 @@ This layer also includes:
 
 ### 2. Generated Layer (`gen/`)
 Abstract base classes with EMF infrastructure - **DO NOT EDIT THESE**:
-- Metamodel registration
+- Getters/setters
 - Reflection support
-- Inverse reference maintenance
-- Serialization hooks
+- Containment/Inverse reference maintenance
 
 ### 3. Implementation Layer (`impl/`)
 Concrete classes you can customize - **safe to edit**:
