@@ -1,200 +1,203 @@
 # TMF Ecore Editor for VSCode
 
-A visual editor for Eclipse Ecore metamodels built with TypeScript for Visual Studio Code.
+<!-- [![VSCode Marketplace](https://img.shields.io/visual-studio-marketplace/v/tripsnek.tmf-ecore-editor)](https://marketplace.visualstudio.com/items?itemName=tripsnek.tmf-ecore-editor) -->
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
+A visual editor for creating and editing Ecore metamodels in VSCode, designed for the TypeScript Modeling Framework (TMF) [[github](https://github.com/tripsnek/tmf) • [npm](https://www.npmjs.com/package/@tripsnek/tmf)]. TMF is a lightweight port of the Eclipse Modeling Framework, bringing its code generation and model introspection capabilities to TypeScript.
 
 ## Features
 
-- **Visual Tree Editor**: Hierarchical view of your Ecore model structure
-- **Properties Panel**: Edit properties of selected model elements
-- **Context Menus**: Right-click to add new elements (classes, attributes, references, etc.)
-- **Real-time Synchronization**: Changes are immediately reflected in the underlying .ecore XML
-- **Type-safe**: Built with TypeScript using the TMF metamodel implementation
+- **Visual Model Editing** - Create and edit .ecore files through an intuitive tree-based + properties sheet interface 
+- **TypeScript Code Generation** - Generate type-safe code with one click
+- **Core EMF Support** - Packages, classes, enums, attributes, operations, enums, and (most notably) references with notions of containment and bi-directionality that are enforced by generated code at runtime. 
 
-## Project Structure
+## Quick Start
 
-```
-tmf-ecore-editor/
-├── src/
-│   ├── extension.ts                 # VSCode extension entry point
-│   ├── ecoreEditorProvider.ts       # Custom editor provider
-│   └── webview/
-│       ├── ecoreEditorApp.ts        # Main webview application
-│       ├── modelTreeView.ts         # Tree view component
-│       ├── propertiesPanel.ts       # Properties editor component
-│       └── modelController.ts       # Model manipulation logic
-├── media/
-│   └── editor.css                   # Editor styles
-├── dist/                            # Compiled webview bundle
-├── out/                             # Compiled extension
-├── package.json                     # Extension manifest
-├── tsconfig.json                    # TypeScript configuration
-├── webpack.config.js                # Webpack configuration
-└── README.md                        # This file
-```
+1. **Install TMF**
+     - `npm install @tripsnek/tmf`
 
-## Prerequisites
+2. **Install the Extension**
+   - Search for "TMF Ecore Editor" in VSCode Extensions
+   - Install and reload VSCode
 
-1. **Node.js** (v14 or higher)
-2. **npm** or **yarn**
-3. **Visual Studio Code** (v1.74.0 or higher)
-4. **@tripsnek/tmf package** installed
+3. **Create Your Model**
+   - Create a new `.ecore` file (an empty file will do, editor will initialize it)
+   - Use the tree view to add model elements
+   - Configure properties in the right panel
 
-## Building the Extension
+4. **Generate TypeScript Code**
+   - Click the "Generate Code" button
+   - [optional] Choose output directory and generation options
+   - Import and use the generated classes in your frontend, backend or (best of all) both ([example TMF-based full stack workspaces here](https://github.com/tripsnek/tmf-examples)).
 
-### 1. Install Dependencies
+## Understanding EMF Concepts
 
-```bash
-npm install
-```
+### Core Elements
 
-### 2. Install the TMF Package
+**EPackage** - The root container for your model, defines namespace and contains classifiers
 
-Make sure the `@tripsnek/tmf` package is available. If it's a local package:
+**EClass** - Represents a class in your model. Can be:
+- *Concrete* - Standard instantiable class
+- *Abstract* - Cannot be instantiated directly
+- *Interface* - Defines contract without implementation
 
-```bash
-# If you have the TMF package locally
-npm install /path/to/tmf-package
+**EAttribute** - Simple typed properties (String, Int, Boolean, etc.)
 
-# Or link it
-npm link /path/to/tmf-package
-```
+**EReference** - Relationships between classes, with two key concepts:
+- *Containment* - Parent-child relationship where child lifecycle is managed by parent
+- *Opposite* - Bidirectional relationship that TMF keeps synchronized automatically. Use these only when you know both ends will be serialized as part of the same containment hierarchy or ["aggregate"](https://en.wikipedia.org/wiki/Domain-driven_design#aggregate_root) - the bundle of data that goes between your server and client all at once.
 
-### 3. Compile the Extension
+**EOperation** - Methods on your classes with parameters and return types
 
-```bash
-# Compile once
-npm run compile
+**EEnum** - Enumeration types with literal values
 
-# Or watch for changes
-npm run watch
-```
+### EMF Data Types
 
-### 4. Copy the TMF Metamodel Implementation
+When defining attributes and operation parameters, you can use these built-in Ecore data types:
 
-Since the TMF metamodel implementation file (`tmf-metamodel.ts`) contains the actual implementation classes, you need to ensure it's properly integrated with the `@tripsnek/tmf` package or adjust the imports accordingly.
+**Primitive Types**
+- `EString` - Text values (TypeScript: `string`)
+- `EInt|Double|EFloat` - Numeric values with no distinction in TS (TypeScript: `number`)
+- `EBoolean` - True/false values (TypeScript: `boolean`)
+- `EDate` - Date/time values (TypeScript: `Date`)
 
-## Running the Extension
+**Classifier Types**
+- `EClass` - References to other classes in your model
+- `EEnum` - Your custom enumerations become TypeScript enums
 
-### Development Mode
+**Type Modifiers**
+- **Multiplicity**: Single-valued or Many-valued
+- **ID**: Marks an attribute as the unique identifier
+- **Transient**: Not persisted when serializing
 
-1. Open the project in Visual Studio Code
-2. Press `F5` to launch a new Extension Development Host window
-3. In the new window, open a folder containing `.ecore` files
-4. Open any `.ecore` file to activate the editor
+### Key Modeling Patterns
 
-### Installing the Extension
-
-1. Package the extension:
-```bash
-npm install -g vsce
-vsce package
+**Containment Hierarchies**  
+When a reference has `containment=true`, the referenced objects become children:
+```typescript
+// Blog contains Posts - deleting the Blog deletes all Posts, they serialize as one unit, etc.
+blog.getPosts().add(post); // Post is now contained by Blog
 ```
 
-2. Install the generated `.vsix` file:
-   - In VSCode, go to Extensions view
-   - Click on the `...` menu
-   - Select "Install from VSIX..."
-   - Choose the generated `.vsix` file
+**Inverse References**  
+When references have opposites, TMF maintains both sides automatically:
+```typescript
+// Setting one side...
+blog.getPosts().add(post);
+// ...automatically sets the other
+console.log(post.getBlog() === blog); // true!
+```
 
-## Usage
+**Multiplicity**  
+- Single-valued: One-to-one relationship
+- Many-valued: One-to-many relationship (uses TMF's EList collections)
 
-### Opening Ecore Files
+## Generated Code Structure
 
-1. Open any `.ecore` file in VSCode
-2. The editor will automatically activate and display:
-   - **Tree Panel** (left): Shows the model structure
-   - **Properties Panel** (right): Shows properties of selected element
+The extension generates three layers of TypeScript code:
 
-### Tree Editor Operations
+### 1. API Layer
+Pure interfaces defining your model's contract:
+```typescript
+export interface Blog extends EObject {
+  getTitle(): string;
+  getPosts(): EList<Post>;
+  // ...
+}
+```
 
-- **Expand/Collapse**: Click the arrow icons to expand or collapse nodes
-- **Select**: Click on any node to select it and view its properties
-- **Context Menu**: Right-click on nodes to:
-  - Add new elements (Classes, Enums, Packages, Attributes, References, Operations, Parameters)
-  - Delete elements
+This layer also includes:
+ - A *Package.ts file for each package, which defines every element in the model.
+ - A *Factory.ts file for each package, which allows reflective instantiation of any type.
 
-### Properties Editor
+### 2. Generated Layer (`gen/`)
+Abstract base classes with EMF infrastructure - **DO NOT EDIT THESE**:
+- Metamodel registration
+- Reflection support
+- Inverse reference maintenance
+- Serialization hooks
 
-- **Edit Properties**: Modify values directly in the input fields
-- **References**: Use dropdowns to set references to other model elements
-- **Multi-References**: Add/remove multiple references (e.g., super types)
-- **Booleans**: Toggle checkboxes for boolean properties
+### 3. Implementation Layer (`impl/`)
+Concrete classes you can customize - **safe to edit**:
+```typescript
+export class BlogImpl extends BlogImplGen implements Blog {
 
-### Toolbar Actions
+  // Implement any operations you defined for your eclass in Ecore
+  myBlogOperation(): void {
+   //do something interesting
+  }
 
-- **Save**: Save changes to the file
-- **Undo/Redo**: (To be implemented) Undo or redo changes
-- **Expand All**: Expand all tree nodes
-- **Collapse All**: Collapse all tree nodes
+  // Or add any other custom business logic that isn't exposed at the interface level
+  validate(): boolean {
+    return this.getTitle() !== null;
+  }
+    
+}
+```
 
-## Customization
+## Editor Interface
 
-### Adding New Element Types
+### Tree View (Left Panel)
+- **Right-click** any element for context menu (Add/Delete actions)
+- **Icons** indicate element types
+- **Arrow notation** shows inheritance (Class → SuperClass)
+- **Brackets** show multiplicity and types (e.g., `posts : Post[*]`)
 
-To support additional Ecore elements:
+### Properties Panel (Right)
+- **Name** - Element identifier
+- **Type** - Data type or class reference
+- **Multiplicity** - Single or many-valued
+- **Containment** - Parent-child relationship
+- **Opposite** - Bidirectional reference
+- **Modifiers** - ID, Volatile, Transient, Derived
 
-1. Update `modelTreeView.ts`:
-   - Add new node creation methods
-   - Update context menu items
+### Toolbar
+- **Generate Code** - Opens generation dialog
+- **Expand/Collapse All** - Tree navigation helpers
 
-2. Update `propertiesPanel.ts`:
-   - Add property descriptors for new element types
+## Keyboard Shortcuts
 
-3. Update `modelController.ts`:
-   - Add factory methods for creating new elements
-   - Add update methods for new properties
+- `Arrow Keys` - Navigate tree
+- `Enter` - Expand/collapse node
+- `Delete` - Remove selected element
+- `Ctrl+S` - Save model
 
-### Styling
+## Example Model
 
-Modify `media/editor.css` to customize the appearance of the editor.
+You don't have to know anything about EMF's ECore XMI format. Just create an empty .ecore file and the editor will initialize it. But here is an example anyway:
 
-## Known Limitations
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<ecore:EPackage name="blog" nsURI="http://example.com/blog">
+  <eClassifiers xsi:type="ecore:EClass" name="Blog">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="title" 
+        eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="publishDate" 
+        eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EDate"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="posts" 
+        upperBound="-1" eType="#//Post" containment="true" eOpposite="#//Post/blog"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="Post">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="id" 
+        eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EInt" iD="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="blog" 
+        eType="#//Blog" eOpposite="#//Blog/posts"/>
+  </eClassifiers>
+</ecore:EPackage>
+```
 
-1. **Undo/Redo**: Not yet implemented
-2. **Cross-References**: Full support for complex cross-references between packages may need additional work
-3. **Validation**: No built-in validation of Ecore constraints yet
+## Resources
 
-## Troubleshooting
+- [TMF npm package](https://www.npmjs.com/package/@tripsnek/tmf) - The installable TMF npm library
+- [TMF Github](https://github.com/tripsnek/tmf) - The TMF source code
+- [TMF Examples](https://github.com/tripsnek/tmf-examples) - Sample full stack applications with NPM/NX workspaces, Node backends and Angular/React front ends.
+- [Eclipse EMF](https://eclipse.dev/emf/docs.html) - Original EMF documentation
+- [TripSnek](https://tripsnek.com/) - Real world application built on TMF, a travel itinerary optimizer.
 
-### Extension Not Activating
+## Support
 
-- Ensure the file has a `.ecore` extension
-- Check the VSCode Developer Console for errors (`Help > Toggle Developer Tools`)
-
-### TMF Package Not Found
-
-- Verify `@tripsnek/tmf` is properly installed
-- Check that the package exports the expected classes
-- Update import statements if the package structure differs
-
-### Webview Not Loading
-
-- Ensure webpack compilation succeeded: `npm run compile`
-- Check that `dist/webview.js` exists
-- Verify the CSP settings in the HTML template
-
-## Future Enhancements
-
-- [ ] Full undo/redo support
-- [ ] Drag-and-drop in tree view
-- [ ] Model validation with error highlighting
-- [ ] Code generation from models
-- [ ] Search and filter capabilities
-
-## Contributing
-
-Contributions are welcome! Please ensure:
-1. Code follows TypeScript best practices
-2. New features include appropriate documentation
-3. Changes maintain compatibility with the TMF metamodel
+- **Issues**: [GitHub Issues](https://github.com/tripsnek/tmf-ecore-editor/issues)
 
 ## License
 
-MIT
-
-## Credits
-
-Built using:
-- [@tripsnek/tmf](https://github.com/tripsnek/tmf)
-- [Visual Studio Code Extension API](https://code.visualstudio.com/api)
-- [VSCode Codicons](https://github.com/microsoft/vscode-codicons)
+MIT - See [LICENSE](LICENSE) for details.
