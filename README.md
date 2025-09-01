@@ -63,7 +63,7 @@ When defining attributes and operation parameters, you can use these built-in Ec
 
 **Primitive Types**
 - `EString` - Text values (TypeScript: `string`)
-- `EInt|Double|EFloat` - Numeric values with no distinction in TS (TypeScript: `number`)
+- `EInt|EDouble|EFloat` - Numeric values with no distinction in TS (TypeScript: `number`)
 - `EBoolean` - True/false values (TypeScript: `boolean`)
 - `EDate` - Date/time values (TypeScript: `Date`)
 
@@ -113,8 +113,8 @@ export interface Blog extends EObject {
 ```
 
 This layer also includes:
- - A *Package.ts file for each package, which defines every element in the model.
- - A *Factory.ts file for each package, which allows reflective instantiation of any type.
+ - A `*-package.ts` file for each package, which defines every element in the model.
+ - A `*-factory.ts` file for each package, which allows reflective instantiation of any type.
 
 ### 2. Generated Layer (`gen/`)
 Abstract base classes with EMF infrastructure - **DO NOT EDIT THESE**:
@@ -155,10 +155,6 @@ export class BlogImpl extends BlogImplGen implements Blog {
 - **Containment** - Parent-child relationship
 - **Opposite** - Bidirectional reference
 - **Modifiers** - ID, Volatile, Transient, Derived
-
-### Toolbar
-- **Generate Code** - Opens generation dialog
-- **Expand/Collapse All** - Tree navigation helpers
 
 ## Keyboard Shortcuts
 
