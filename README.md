@@ -102,7 +102,7 @@ console.log(post.getBlog() === blog); // true!
 
 The extension generates three layers of TypeScript code:
 
-### 1. API Layer
+### 1. API Layer (`api/`)
 Pure interfaces defining your model's contract:
 ```typescript
 export interface Blog extends EObject {
